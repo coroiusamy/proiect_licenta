@@ -1,0 +1,8 @@
+### Test Creare Cont Nou
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "test-din-vscode@email.com",
+  "password": "parola123"
+}
