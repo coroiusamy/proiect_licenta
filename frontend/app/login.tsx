@@ -12,6 +12,7 @@ import { Link, router } from 'expo-router';
 import axios, { isAxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message';
+import { useAuth } from '@/context/AuthContext';
 
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -23,6 +24,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const colorScheme = useColorScheme();
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,21 +42,12 @@ export default function LoginScreen() {
       });
 
       const { token } = response.data;
-      await SecureStore.setItemAsync('userToken', token);
-
-      Toast.show({
-        type: 'success',
-        text1: 'Succes',
-        text2: 'Te-ai logat cu succes!',
-      });
-
-      // router.replace('/(tabs)');
+      login(token);
     } catch (error) {
       let message = 'A apărut o eroare';
       if (isAxiosError(error)) {
         message = error.response?.data?.message || 'Eroare de la server';
       }
-
       Toast.show({
         type: 'error',
         text1: 'Eroare Logare',

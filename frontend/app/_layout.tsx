@@ -7,6 +7,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import { AuthProvider } from '@/context/AuthContext';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -19,32 +20,36 @@ export default function RootLayout() {
 
   return (
     <>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <AuthProvider>
+        <ThemeProvider
+          value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
+        >
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-          <Stack.Screen
-            name="modal"
-            options={{ presentation: 'modal', title: 'Modal' }}
-          />
+            <Stack.Screen
+              name="modal"
+              options={{ presentation: 'modal', title: 'Modal' }}
+            />
 
-          <Stack.Screen
-            name="login"
-            options={{
-              title: 'Autentificare',
-              presentation: 'modal',
-            }}
-          />
-          <Stack.Screen
-            name="register"
-            options={{
-              title: 'Înregistrare',
-              presentation: 'modal',
-            }}
-          />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+            <Stack.Screen
+              name="login"
+              options={{
+                title: 'Autentificare',
+                presentation: 'modal',
+              }}
+            />
+            <Stack.Screen
+              name="register"
+              options={{
+                title: 'Înregistrare',
+                presentation: 'modal',
+              }}
+            />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </AuthProvider>
       <Toast />
     </>
   );
