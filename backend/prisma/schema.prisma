@@ -1,20 +1,57 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 // === MODELUL UTILIZATORULUI ===
-
 model User {
-  id        Int      @id @default(autoincrement()) // ID unic, numeric
-  email     String   @unique // Email-ul, trebuie să fie unic
-  password  String   // parola CRIPTATĂ
-  createdAt DateTime @default(now()) // Data la care s-a creat contul
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  // Un user are o listă de rezultate
+  analysisResults AnalysisResult[]
+}
+
+// === BIBLIOTECA DE ANALIZE ===
+model AnalysisType {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique // ex: "Glicemie"
+  unit  String  // ex: "mg/dL"
+  
+  refMin Float? // Opțional
+  refMax Float? // Opțional
+
+  // Interpretările "default"
+  interpretationLow   String? @db.Text
+  interpretationNormal String? @db.Text
+  interpretationHigh  String? @db.Text
+
+  // Un tip de analiză are multe rezultate
+  results AnalysisResult[]
+}
+
+// === REZULTATELE UTILIZATORILOR (JURNALUL) ===
+model AnalysisResult {
+  id     Int      @id @default(autoincrement())
+  
+  value       Float?   // Valoare numerică (ex: 105.5)
+  stringValue String?  // Valoare text (ex: "Pozitiv", "Negativ")
+  
+  date   DateTime // Data la care a fost făcută analiza
+
+  // Legătura către Utilizator
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Legătura către Tipul Analizei
+  analysisTypeId Int
+  analysisType   AnalysisType @relation(fields: [analysisTypeId], references: [id])
+  
+  notes String? @db.Text // Comentariu opțional
 }

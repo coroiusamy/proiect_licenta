@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
 import authRoutes from './routes/auth.routes.js';
+import analysisRoutes from './routes/analysis.routes.js';
 
 dotenv.config();
 
@@ -15,6 +17,7 @@ const PORT = process.env.PORT || 3000;
 
 // --- ÎNCĂRCAREA RUTELOR ---
 app.use('/api/auth', authRoutes);
+app.use('/api/analyses', analysisRoutes);
 
 // Pornire server
 app.listen(PORT, () => {
