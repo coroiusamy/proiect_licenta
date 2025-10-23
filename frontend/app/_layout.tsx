@@ -46,6 +46,20 @@ export default function RootLayout() {
                 presentation: 'modal',
               }}
             />
+            <Stack.Screen
+              name="add-analysis"
+              options={{
+                title: 'Adaugă Analiză',
+                presentation: 'modal',
+              }}
+            />
+            <Stack.Screen
+              name="istoric-detaliu"
+              options={{
+                title: 'Detalii Analize', // Titlu generic, va fi suprascris
+                presentation: 'modal',
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
