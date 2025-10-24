@@ -77,3 +77,40 @@ export const addAnalysisResult = async (req, res) => {
     res.status(500).json({ message: 'Eroare server' });
   }
 };
+
+//Formateaza/Pregateste datele pentru graficul unei analize
+export const getChartData = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const analysisTypeId = parseInt(req.params.typeId, 10);
+
+    if (isNaN(analysisTypeId)) {
+      return res
+        .status(400)
+        .json({ message: 'ID-ul tipului de analiză este invalid.' });
+    }
+
+    // Analiza dorita petntru userul 'x'
+    const results = await prisma.analysisResult.findMany({
+      where: {
+        userId: userId,
+        analysisTypeId: analysisTypeId,
+        value: {
+          not: null,
+        },
+      },
+      orderBy: {
+        date: 'asc',
+      },
+      select: {
+        date: true,
+        value: true,
+      },
+    });
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.error('Eroare la preluarea datelor pentru grafic:', error);
+    res.status(500).json({ message: 'Eroare server' });
+  }
+};
