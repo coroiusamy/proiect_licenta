@@ -5,6 +5,7 @@ import {
   getAllAnalysisTypes,
   getMyResults,
   addAnalysisResult,
+  getChartData,
 } from '../controllers/analysis.controller.js';
 
 const router = Router();
@@ -21,7 +22,11 @@ router.get('/types', getAllAnalysisTypes);
 router.get('/', protect, getMyResults);
 
 // POST /api/analyses/
-// Adaugă o analiza noua
+// Adauga o analiza noua
 router.post('/', protect, addAnalysisResult);
+
+// GET /api/analyses/chart/:typeId
+// Incarca grafic analize
+router.get('/chart/:typeId', protect, getChartData);
 
 export default router;

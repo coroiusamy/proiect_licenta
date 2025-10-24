@@ -56,8 +56,14 @@ export default function RootLayout() {
             <Stack.Screen
               name="istoric-detaliu"
               options={{
-                title: 'Detalii Analize', // Titlu generic, va fi suprascris
+                title: 'Detalii Analize',
                 presentation: 'modal',
+              }}
+            />
+            <Stack.Screen
+              name="chart-detail"
+              options={{
+                title: 'Grafic',
               }}
             />
           </Stack>

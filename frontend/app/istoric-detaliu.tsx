@@ -5,8 +5,10 @@ import {
   View,
   useColorScheme,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+
+import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios, { isAxiosError } from 'axios';
 import Toast from 'react-native-toast-message';
@@ -41,7 +43,7 @@ export default function IstoricDetaliuScreen() {
   const [allResults, setAllResults] = useState<AnalysisResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch ALL results when the screen loads (inefficient, replace later)
+  // Fetch ALL results (still inefficient, replace later)
   useEffect(() => {
     const fetchAllResults = async () => {
       if (!token) {
@@ -53,7 +55,12 @@ export default function IstoricDetaliuScreen() {
         const response = await axios.get(`${API_URL}/api/analyses`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setAllResults(response.data);
+
+        const sortedData = response.data.sort(
+          (a: AnalysisResult, b: AnalysisResult) =>
+            a.analysisType.name.localeCompare(b.analysisType.name)
+        );
+        setAllResults(sortedData);
       } catch (error) {
         console.error('Failed to fetch results for detail screen', error);
         let message = 'Nu am putut reîncărca datele.';
@@ -126,21 +133,33 @@ export default function IstoricDetaliuScreen() {
             data={resultsForThisDate}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <View style={[styles.itemContainer, itemSeparatorStyle]}>
-                <ThemedView style={styles.itemHeader}>
-                  <ThemedText style={styles.itemName}>
-                    {item.analysisType.name}
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: '/chart-detail' as any, // grafic analize
+                    params: {
+                      typeId: item.analysisType.id,
+                      typeName: item.analysisType.name,
+                    },
+                  })
+                }
+              >
+                <View style={[styles.itemContainer, itemSeparatorStyle]}>
+                  <ThemedView style={styles.itemHeader}>
+                    <ThemedText style={styles.itemName}>
+                      {item.analysisType.name}
+                    </ThemedText>
+                  </ThemedView>
+                  <ThemedText style={styles.itemValue}>
+                    {renderValue(item)}
                   </ThemedText>
-                </ThemedView>
-                <ThemedText style={styles.itemValue}>
-                  {renderValue(item)}
-                </ThemedText>
-                {item.notes && (
-                  <ThemedText style={styles.itemNotes}>
-                    Notițe: {item.notes}
-                  </ThemedText>
-                )}
-              </View>
+                  {item.notes && (
+                    <ThemedText style={styles.itemNotes}>
+                      Notițe: {item.notes}
+                    </ThemedText>
+                  )}
+                </View>
+              </TouchableOpacity>
             )}
             ListHeaderComponent={<View style={{ height: 10 }} />}
             ListFooterComponent={<View style={{ height: 10 }} />}
