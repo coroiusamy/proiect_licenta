@@ -7,8 +7,13 @@ import {
   addAnalysisResult,
   getChartData,
 } from '../controllers/analysis.controller.js';
+import { uploadAnalysisFile } from '../controllers/upload.controller.js';
+import multer from 'multer';
 
 const router = Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 // --- Rute Publice ---
 // Oricine (chiar și nelogat) poate vedea ce tipuri de analize există
@@ -28,5 +33,14 @@ router.post('/', protect, addAnalysisResult);
 // GET /api/analyses/chart/:typeId
 // Incarca grafic analize
 router.get('/chart/:typeId', protect, getChartData);
+
+// POST /api/analyses/upload
+// Incarca fisier pentru analiza (PDF sau imagine)
+router.post(
+  '/upload',
+  protect,
+  upload.single('analysisFile'),
+  uploadAnalysisFile
+);
 
 export default router;
