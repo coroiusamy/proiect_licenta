@@ -25,6 +25,7 @@ model User {
 model AnalysisType {
   id    Int     @id @default(autoincrement())
   name  String  @unique // ex: "Glicemie"
+  displayName      String?
   unit  String  // ex: "mg/dL"
   
   refMin Float? // Opțional
