@@ -27,8 +27,9 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}
     >
+      {/* --- Tab 1: Home (Dashboard) --- */}
       <Tabs.Screen
-        name="index"
+        name="index" // Acesta e app/(tabs)/index.tsx
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => (
@@ -36,12 +37,37 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* --- Tab 2: Istoric (Rămâne la fel) --- */}
       <Tabs.Screen
         name="istoric"
         options={{
           title: 'Istoric',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="list.bullet" color={color} />
+          ),
+        }}
+      />
+
+      {/* --- TAB NOU 3: Butonul "Adaugă" (Central) --- */}
+      <Tabs.Screen
+        name="adauga" // Vom crea un fișier 'adauga.tsx'
+        options={{
+          title: 'Adaugă',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={34} name="plus.circle.fill" color={color} /> // Iconiță mai mare
+          ),
+        }}
+        // Vom adăuga un listener care să deschidă un modal
+      />
+
+      {/* --- TAB NOU 4: Profil --- */}
+      <Tabs.Screen
+        name="profil" // Vom crea un fișier 'profil.tsx'
+        options={{
+          title: 'Profil',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="person.fill" color={color} />
           ),
         }}
       />
