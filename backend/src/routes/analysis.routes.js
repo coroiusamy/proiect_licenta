@@ -6,6 +6,7 @@ import {
   getMyResults,
   addAnalysisResult,
   getChartData,
+  deleteAnalysesByDate,
 } from '../controllers/analysis.controller.js';
 import { uploadAnalysisFile } from '../controllers/upload.controller.js';
 import multer from 'multer';
@@ -42,5 +43,9 @@ router.post(
   upload.single('analysisFile'),
   uploadAnalysisFile
 );
+
+// DELETE /api/analyses/
+//sterge un buletin de analize pe o data specifica
+router.delete('/', protect, deleteAnalysesByDate);
 
 export default router;

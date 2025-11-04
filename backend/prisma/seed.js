@@ -56,6 +56,16 @@ const analysisTypesData = [
       'Bilirubina directă crescută. Poate indica colestază sau obstrucție biliară.',
     interpretationNormal: 'Bilirubina directă este în limite normale.',
   },
+  {
+    name: 'Bilirubina indirecta',
+    displayName: 'Bilirubină indirectă',
+    unit: 'mg/dL',
+    refMin: 0.1, // Valori de referință calculate (Total Min - Direct Max)
+    refMax: 1.0, // Valori de referință calculate (Total Max - Direct Min)
+    interpretationHigh:
+      'Bilirubina indirectă crescută. Poate indica hemoliză (distrugerea eritrocitelor) sau sindrom Gilbert.',
+    interpretationNormal: 'Bilirubina indirectă este în limite normale.',
+  },
 
   // ============================================
   // BIOCHIMIE - Metabolism Fier
@@ -546,7 +556,7 @@ const analysisTypesData = [
       'Urobilinogen crescut. Poate indica hemoliza sau boală hepatică.',
   },
   {
-    name: 'bilirubina',
+    name: 'bilirubina urinara',
     displayName: 'Bilirubină urinară',
     unit: 'mg/dL',
     interpretationNormal: 'Negativ. Fără bilirubină în urină (normal).',
