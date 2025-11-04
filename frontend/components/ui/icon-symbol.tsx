@@ -5,7 +5,10 @@ import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
+type IconMapping = Record<
+  SymbolViewProps['name'],
+  ComponentProps<typeof MaterialIcons>['name']
+>;
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
@@ -18,6 +21,10 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  // Tabs / common symbols used in the app
+  'list.bullet': 'format-list-bulleted', // SF: list.bullet -> Material: format-list-bulleted
+  'plus.circle.fill': 'add', // use simple add icon (MaterialIcons has no exact filled circle name)
+  'person.fill': 'person',
 } as IconMapping;
 
 /**
@@ -37,5 +44,15 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  // Defensive: if a mapping is missing, fall back to a generic icon to avoid rendering nothing
+  const mappedName =
+    (MAPPING as Record<string, string>)[name] || 'help-outline';
+  return (
+    <MaterialIcons
+      color={color}
+      size={size}
+      name={mappedName as any}
+      style={style}
+    />
+  );
 }

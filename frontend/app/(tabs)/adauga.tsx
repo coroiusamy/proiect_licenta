@@ -55,9 +55,7 @@ export default function AdaugaScreen() {
       );
 
       // Succes! Afișăm un sumar.
-      const resultCount = Array.isArray(response.data)
-        ? response.data.length
-        : 0;
+      const resultCount = response.data?.count || 0;
       Toast.show({
         type: 'success',
         text1: 'Succes!',
