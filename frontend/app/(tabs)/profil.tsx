@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     padding: 20,
-    paddingTop: 40, // Spațiu sus
+    paddingTop: 40,
   },
   logoutButton: {
     backgroundColor: '#FF3B30',
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     width: '90%',
-    marginTop: 'auto', // Împinge butonul în josul paginii
+    marginTop: 'auto',
     marginBottom: 20,
   },
   logoutButtonText: {

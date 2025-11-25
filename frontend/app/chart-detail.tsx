@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -19,6 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 type ChartDataPoint = {
   date: string;
@@ -29,100 +30,116 @@ export default function ChartDetailScreen() {
   const params = useLocalSearchParams<{ typeId?: string; typeName?: string }>();
   const { token, logout } = useAuth();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!token || !params.typeId) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchChartData = async () => {
-      if (!token || !params.typeId) {
-        setIsLoading(false);
-        Toast.show({
-          type: 'error',
-          text1: 'Eroare',
-          text2: 'Lipsesc informații necesare.',
-        });
-        return;
-      }
       setIsLoading(true);
       try {
         const response = await axios.get(
           `${API_URL}/api/analyses/chart/${params.typeId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         setChartData(response.data);
       } catch (error) {
-        let message = 'Nu am putut încărca datele graficului.';
-        let shouldLogout = false;
+        let message = 'Nu am putut încărca datele.';
         if (isAxiosError(error) && error.response?.status === 401) {
-          message = 'Sesiunea a expirat.';
-          shouldLogout = true;
+          logout(); // Auto logout la expirare
         }
-        Toast.show({
-          type: 'error',
-          text1: 'Eroare Încărcare',
-          text2: message,
-        });
-        if (shouldLogout) {
-          logout();
-        }
+        Toast.show({ type: 'error', text1: 'Eroare', text2: message });
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchChartData();
   }, [token, params.typeId, logout]);
 
-  const formatDataForChart = () => {
-    if (chartData.length === 0) {
-      return { labels: [], datasets: [{ data: [] }] };
-    }
-    const labels = chartData.map((point) => {
-      const date = new Date(point.date);
-      return `${date.getDate().toString().padStart(2, '0')}.${(
-        date.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, '0')}`;
-    });
-    const data = chartData.map((point) => point.value);
+  // Optimizare: Calculăm datele graficului doar când se schimbă chartData
+  const chartConfig = useMemo(
+    () => ({
+      backgroundColor: isDark ? '#1c1c1e' : '#ffffff',
+      backgroundGradientFrom: isDark ? '#2c2c2e' : '#f0f0f0',
+      backgroundGradientTo: isDark ? '#2c2c2e' : '#f0f0f0',
+      decimalPlaces: 1,
+      color: (opacity = 1) =>
+        isDark
+          ? `rgba(255, 255, 255, ${opacity})`
+          : `rgba(0, 0, 0, ${opacity})`,
+      labelColor: (opacity = 1) =>
+        isDark
+          ? `rgba(150, 150, 150, ${opacity})`
+          : `rgba(100, 100, 100, ${opacity})`,
+      style: { borderRadius: 16 },
+      propsForDots: {
+        r: '4',
+        strokeWidth: '1',
+        stroke: isDark ? '#555' : '#ccc',
+      },
+    }),
+    [isDark]
+  );
+
+  const formattedChartData = useMemo(() => {
+    if (!chartData.length) return { labels: [], datasets: [{ data: [] }] };
+
     return {
-      labels: labels,
+      labels: chartData.map((point) => {
+        const d = new Date(point.date);
+        return `${d.getDate()}.${d.getMonth() + 1}`;
+      }),
       datasets: [
         {
-          data: data,
+          data: chartData.map((point) => point.value),
           color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
           strokeWidth: 2,
         },
       ],
       legend: [params.typeName || 'Evoluție'],
     };
-  };
+  }, [chartData, params.typeName]);
 
-  const chartConfig = {
-    backgroundColor: colorScheme === 'dark' ? '#1c1c1e' : '#ffffff',
-    backgroundGradientFrom: colorScheme === 'dark' ? '#2c2c2e' : '#f0f0f0',
-    backgroundGradientTo: colorScheme === 'dark' ? '#2c2c2e' : '#f0f0f0',
-    decimalPlaces: 1,
-    color: (opacity = 1) =>
-      colorScheme === 'dark'
-        ? `rgba(255, 255, 255, ${opacity})`
-        : `rgba(0, 0, 0, ${opacity})`,
-    labelColor: (opacity = 1) =>
-      colorScheme === 'dark'
-        ? `rgba(150, 150, 150, ${opacity})`
-        : `rgba(100, 100, 100, ${opacity})`,
-    style: { borderRadius: 16 },
-    propsForDots: {
-      r: '4',
-      strokeWidth: '1',
-      stroke: colorScheme === 'dark' ? '#555' : '#ccc',
-    },
-  };
+  // Logică de randare a Tooltip-ului separată pentru claritate
+  const renderTooltip = () => {
+    if (selectedPoint === null || !chartData[selectedPoint]) return null;
 
-  const screenWidth = Dimensions.get('window').width;
+    const point = chartData[selectedPoint];
+    const totalPoints = chartData.length - 1;
+    // Calcul poziție (aproximativă, bazată pe logica chart-kit)
+    const basePosition =
+      50 + (selectedPoint / totalPoints) * (SCREEN_WIDTH - 110);
+
+    let left = basePosition - 60;
+    if (left + 120 > SCREEN_WIDTH - 20) left = SCREEN_WIDTH - 140; // Corecție dreapta
+    if (left < 10) left = 10; // Corecție stânga
+
+    return (
+      <View style={[styles.tooltip, { left }]}>
+        <ThemedText style={styles.tooltipDate}>
+          {new Date(point.date).toLocaleDateString('ro-RO', {
+            day: '2-digit',
+            month: 'short',
+          })}
+        </ThemedText>
+        <ThemedText style={styles.tooltipValue}>{point.value}</ThemedText>
+        <TouchableOpacity
+          style={styles.tooltipClose}
+          onPress={() => setSelectedPoint(null)}
+        >
+          <ThemedText style={styles.tooltipCloseText}>✕</ThemedText>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -138,24 +155,22 @@ export default function ChartDetailScreen() {
             </ThemedText>
           ) : (
             <>
-              {/* Graficul */}
               <View style={styles.chartWrapper}>
                 <LineChart
-                  data={formatDataForChart()}
-                  width={screenWidth - 30}
+                  data={formattedChartData}
+                  width={SCREEN_WIDTH - 30}
                   height={250}
                   chartConfig={chartConfig}
                   bezier
                   style={styles.chartStyle}
                 />
 
-                {/* Overlay cu butoane invizibile pentru fiecare punct */}
+                {/* Overlay pentru click pe puncte */}
                 <View style={styles.pointsOverlay}>
                   {chartData.map((_, index) => {
                     const xPosition =
                       50 +
-                      (index / (chartData.length - 1)) * (screenWidth - 110);
-
+                      (index / (chartData.length - 1)) * (SCREEN_WIDTH - 110);
                     return (
                       <TouchableOpacity
                         key={index}
@@ -169,75 +184,27 @@ export default function ChartDetailScreen() {
                   })}
                 </View>
 
-                {/* Tooltip cu protecție pentru margini */}
-                {selectedPoint !== null &&
-                  chartData[selectedPoint] &&
-                  (() => {
-                    const totalPoints = chartData.length - 1;
-                    const basePosition =
-                      50 + (selectedPoint / totalPoints) * (screenWidth - 110);
-
-                    let tooltipLeft = basePosition - 60; // Centrat pe punct
-
-                    // prea aproape dreapta
-                    if (tooltipLeft + 120 > screenWidth - 20) {
-                      tooltipLeft = screenWidth - 140;
-                    }
-
-                    // prea aproape stanga
-                    if (tooltipLeft < 10) {
-                      tooltipLeft = 10;
-                    }
-
-                    return (
-                      <View style={[styles.tooltip, { left: tooltipLeft }]}>
-                        <ThemedText style={styles.tooltipDate}>
-                          {new Date(
-                            chartData[selectedPoint].date
-                          ).toLocaleDateString('ro-RO', {
-                            day: '2-digit',
-                            month: 'short',
-                          })}
-                        </ThemedText>
-                        <ThemedText style={styles.tooltipValue}>
-                          {chartData[selectedPoint].value}
-                        </ThemedText>
-                        <TouchableOpacity
-                          style={styles.tooltipClose}
-                          onPress={() => setSelectedPoint(null)}
-                        >
-                          <ThemedText style={styles.tooltipCloseText}>
-                            ✕
-                          </ThemedText>
-                        </TouchableOpacity>
-                      </View>
-                    );
-                  })()}
+                {renderTooltip()}
               </View>
 
-              {/* Lista de valori */}
               <ThemedView style={styles.valuesContainer}>
                 <ThemedText style={styles.valuesTitle}>
                   Valori Înregistrate:
                 </ThemedText>
-                {chartData.map((point, index) => {
-                  const date = new Date(point.date);
-                  const formattedDate = date.toLocaleDateString('ro-RO', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                  });
-                  return (
-                    <ThemedView key={index} style={styles.valueRow}>
-                      <ThemedText style={styles.valueDate}>
-                        {formattedDate}
-                      </ThemedText>
-                      <ThemedText style={styles.valueNumber}>
-                        {point.value}
-                      </ThemedText>
-                    </ThemedView>
-                  );
-                })}
+                {chartData.map((point, index) => (
+                  <ThemedView key={index} style={styles.valueRow}>
+                    <ThemedText style={styles.valueDate}>
+                      {new Date(point.date).toLocaleDateString('ro-RO', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </ThemedText>
+                    <ThemedText style={styles.valueNumber}>
+                      {point.value}
+                    </ThemedText>
+                  </ThemedView>
+                ))}
               </ThemedView>
             </>
           )}
@@ -295,7 +262,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
-    borderBottomWidth: 0,
   },
   tooltipDate: {
     fontSize: 12,
@@ -339,11 +305,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#444',
   },
-  valueDate: {
-    fontSize: 15,
-  },
-  valueNumber: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  valueDate: { fontSize: 15 },
+  valueNumber: { fontSize: 15, fontWeight: '600' },
 });

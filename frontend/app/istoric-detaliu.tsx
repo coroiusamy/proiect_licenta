@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios, { isAxiosError } from 'axios';
@@ -23,9 +22,8 @@ type AnalysisType = {
   id: number;
   name: string;
   unit: string;
-  refMin?: number | null;
-  refMax?: number | null;
 };
+
 type AnalysisResult = {
   id: number;
   value?: number | null;
@@ -39,78 +37,71 @@ export default function IstoricDetaliuScreen() {
   const params = useLocalSearchParams<{ displayDate?: string }>();
   const { token, logout } = useAuth();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const [allResults, setAllResults] = useState<AnalysisResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch ALL results (still inefficient, replace later)
+  // --- 1. Fetch Data ---
   useEffect(() => {
+    if (!token) return;
+
     const fetchAllResults = async () => {
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
       setIsLoading(true);
       try {
         const response = await axios.get(`${API_URL}/api/analyses`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        // Sortăm alfabetic după nume
         const sortedData = response.data.sort(
           (a: AnalysisResult, b: AnalysisResult) =>
             a.analysisType.name.localeCompare(b.analysisType.name)
         );
         setAllResults(sortedData);
       } catch (error) {
-        console.error('Failed to fetch results for detail screen', error);
-        let message = 'Nu am putut reîncărca datele.';
-        let shouldLogout = false;
+        let message = 'Nu am putut încărca datele.';
         if (isAxiosError(error) && error.response?.status === 401) {
-          message = 'Sesiunea a expirat. Te rugăm să te re-loghezi.';
-          shouldLogout = true;
-        }
-        Toast.show({ type: 'error', text1: 'Eroare', text2: message });
-        if (shouldLogout) {
           logout();
+        } else {
+          Toast.show({ type: 'error', text1: 'Eroare', text2: message });
         }
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchAllResults();
   }, [token, logout]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ro-RO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
+  // --- 2. filtrare dupa data ---
   const resultsForThisDate = useMemo(() => {
-    if (!params.displayDate || allResults.length === 0) {
-      return [];
-    }
-    return allResults.filter(
-      (result) => formatDate(result.date) === params.displayDate
-    );
+    if (!params.displayDate || allResults.length === 0) return [];
+
+    return allResults.filter((result) => {
+      const formattedDate = new Date(result.date).toLocaleDateString('ro-RO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      return formattedDate === params.displayDate;
+    });
   }, [params.displayDate, allResults]);
 
+  // --- 3. Render Helpers ---
   const renderValue = (item: AnalysisResult) => {
-    if (item.value !== null && item.value !== undefined) {
-      return `${item.value} ${item.analysisType.unit}`;
-    }
-    if (item.stringValue) {
-      return item.stringValue;
-    }
-    return 'N/A';
+    if (item.value != null) return `${item.value} ${item.analysisType.unit}`;
+    return item.stringValue || 'N/A';
   };
 
-  const itemSeparatorStyle = {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colorScheme === 'dark' ? '#444' : '#ccc',
+  const handlePressItem = (item: AnalysisResult) => {
+    router.push({
+      pathname: '/chart-detail',
+      params: {
+        typeId: item.analysisType.id,
+        typeName: item.analysisType.name,
+      },
+    });
   };
 
   return (
@@ -121,48 +112,56 @@ export default function IstoricDetaliuScreen() {
 
       <ThemedView style={styles.container}>
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" />
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
           </View>
         ) : resultsForThisDate.length === 0 ? (
-          <ThemedText style={styles.emptyText}>
-            Nu s-au găsit analize pentru această dată.
-          </ThemedText>
+          <View style={styles.centerContainer}>
+            <ThemedText style={styles.emptyText}>
+              Nu s-au găsit analize pentru această dată.
+            </ThemedText>
+          </View>
         ) : (
           <FlatList
             data={resultsForThisDate}
             keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => (
+              <View
+                style={[
+                  styles.separator,
+                  { backgroundColor: isDark ? '#444' : '#eee' },
+                ]}
+              />
+            )}
             renderItem={({ item }) => (
               <TouchableOpacity
-                onPress={() =>
-                  router.push({
-                    pathname: '/chart-detail' as any, // grafic analize
-                    params: {
-                      typeId: item.analysisType.id,
-                      typeName: item.analysisType.name,
-                    },
-                  })
-                }
+                onPress={() => handlePressItem(item)}
+                activeOpacity={0.7}
               >
-                <View style={[styles.itemContainer, itemSeparatorStyle]}>
-                  <ThemedView style={styles.itemHeader}>
-                    <ThemedText style={styles.itemName}>
-                      {item.analysisType.name}
-                    </ThemedText>
-                  </ThemedView>
-                  <ThemedText style={styles.itemValue}>
-                    {renderValue(item)}
-                  </ThemedText>
-                  {item.notes && (
-                    <ThemedText style={styles.itemNotes}>
-                      Notițe: {item.notes}
-                    </ThemedText>
-                  )}
+                <View style={styles.itemContainer}>
+                  <View style={styles.itemContent}>
+                    <View style={styles.itemHeader}>
+                      <ThemedText style={styles.itemName}>
+                        {item.analysisType.name}
+                      </ThemedText>
+                      <ThemedText style={styles.itemValue}>
+                        {renderValue(item)}
+                      </ThemedText>
+                    </View>
+
+                    {item.notes && (
+                      <ThemedText style={styles.itemNotes}>
+                        Note: {item.notes}
+                      </ThemedText>
+                    )}
+                  </View>
+
+                  {/* Săgeată dreapta pentru a indica navigare */}
+                  <ThemedText style={styles.chevron}>›</ThemedText>
                 </View>
               </TouchableOpacity>
             )}
-            ListHeaderComponent={<View style={{ height: 10 }} />}
-            ListFooterComponent={<View style={{ height: 10 }} />}
           />
         )}
       </ThemedView>
@@ -170,30 +169,63 @@ export default function IstoricDetaliuScreen() {
   );
 }
 
-// --- Styles ---
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  listContent: {
+    paddingVertical: 10,
+  },
   emptyText: {
-    textAlign: 'center',
-    marginTop: 50,
     fontSize: 16,
     color: 'gray',
+    textAlign: 'center',
+  },
+  separator: {
+    height: 1,
+    marginLeft: 15,
   },
   itemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 15,
-    backgroundColor: 'transparent',
+  },
+  itemContent: {
+    flex: 1,
   },
   itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    marginBottom: 4,
   },
-  itemName: { fontSize: 16, fontWeight: 'bold', flex: 1, marginRight: 10 },
-  itemValue: { fontSize: 15, marginBottom: 8 },
-  itemNotes: { fontSize: 13, color: 'gray', fontStyle: 'italic' },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 10,
+  },
+  itemValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  itemNotes: {
+    fontSize: 13,
+    color: 'gray',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  chevron: {
+    fontSize: 24,
+    color: '#C7C7CC',
+    marginLeft: 10,
+    fontWeight: '300',
+  },
 });
