@@ -64,7 +64,6 @@ export default function ChartDetailScreen() {
     fetchChartData();
   }, [token, params.typeId, logout]);
 
-  // Optimizare: Calculăm datele graficului doar când se schimbă chartData
   const chartConfig = useMemo(
     () => ({
       backgroundColor: isDark ? '#1c1c1e' : '#ffffff',
@@ -108,7 +107,6 @@ export default function ChartDetailScreen() {
     };
   }, [chartData, params.typeName]);
 
-  // Logică de randare a Tooltip-ului separată pentru claritate
   const renderTooltip = () => {
     if (selectedPoint === null || !chartData[selectedPoint]) return null;
 
