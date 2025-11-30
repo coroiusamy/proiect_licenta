@@ -78,6 +78,58 @@ export const addAnalysisResult = async (req, res) => {
   }
 };
 
+//sterge un buletin de analize pe o data specifica
+export const deleteAnalysesByDate = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { date } = req.query;
+
+    if (!date || typeof date !== 'string') {
+      return res
+        .status(400)
+        .json({ message: 'Data lipsește sau este invalidă.' });
+    }
+
+    // Convertim data ISO primită într-un obiect Date
+    const targetDate = new Date(date);
+    if (isNaN(targetDate.getTime())) {
+      return res.status(400).json({ message: 'Formatul datei este invalid.' });
+    }
+
+    // (ex: 25.11.2020 ora 00:00:00)
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.log(
+      `Backend: Se șterg analizele pentru UserID: ${userId} între ${startOfDay.toISOString()} și ${endOfDay.toISOString()}`
+    );
+
+    // Folosim 'deleteMany' pentru a șterge toate intrările
+    const deleteResult = await prisma.analysisResult.deleteMany({
+      where: {
+        userId: userId, // Doar ale userului logat
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: `Buletinul de analize din ${targetDate.toLocaleDateString(
+        'ro-RO'
+      )} a fost șters.`,
+      count: deleteResult.count,
+    });
+  } catch (error) {
+    console.error('Eroare la ștergerea analizelor:', error);
+    res.status(500).json({ message: 'Eroare server la ștergere.' });
+  }
+};
+
 //Formateaza/Pregateste datele pentru graficul unei analize
 export const getChartData = async (req, res) => {
   try {
