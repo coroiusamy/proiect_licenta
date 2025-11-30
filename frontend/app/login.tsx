@@ -58,10 +58,9 @@ export default function LoginScreen() {
     }
   };
 
-  // Stiluri dinamice
-  const inputBorderColor = isDark ? '#444' : 'gray';
-  const textColor = isDark ? '#FFFFFF' : '#000000';
-  const placeholderColor = isDark ? '#999' : '#666';
+  const inputBg = isDark ? '#2C2C2E' : '#F2F2F7';
+  const inputColor = isDark ? '#FFFFFF' : '#000000';
+  const placeholderColor = isDark ? '#8E8E93' : '#C7C7CC';
 
   return (
     <ThemedView style={styles.container}>
@@ -74,7 +73,7 @@ export default function LoginScreen() {
         <TextInput
           style={[
             styles.input,
-            { color: textColor, borderColor: inputBorderColor },
+            { backgroundColor: inputBg, color: inputColor },
           ]}
           placeholder="Email"
           value={email}
@@ -89,7 +88,7 @@ export default function LoginScreen() {
         <TextInput
           style={[
             styles.input,
-            { color: textColor, borderColor: inputBorderColor },
+            { backgroundColor: inputBg, color: inputColor },
           ]}
           placeholder="Parolă"
           value={password}
@@ -98,8 +97,19 @@ export default function LoginScreen() {
           placeholderTextColor={placeholderColor}
           autoComplete="password"
           returnKeyType="done"
-          onSubmitEditing={handleLogin} // Logare la Enter
+          onSubmitEditing={handleLogin}
         />
+
+        {/* Link Forgot Password */}
+        <TouchableOpacity
+          style={styles.forgotPasswordContainer}
+          onPress={() => router.push('/forgot-password')}
+          disabled={isLoading}
+        >
+          <ThemedText style={styles.forgotPasswordText}>
+            Ai uitat parola?
+          </ThemedText>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
@@ -145,20 +155,35 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 50,
-    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 15,
     marginBottom: 16,
-    paddingHorizontal: 12,
-    borderRadius: 8,
     fontSize: 16,
+  },
+  forgotPasswordContainer: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+    marginTop: -5,
+    padding: 5,
+  },
+  forgotPasswordText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
   buttonContainer: {
     backgroundColor: '#007AFF',
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
     height: 50,
     justifyContent: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
   },
   buttonDisabled: {
     opacity: 0.7,
