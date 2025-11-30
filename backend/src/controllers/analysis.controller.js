@@ -110,7 +110,7 @@ export const deleteAnalysesByDate = async (req, res) => {
     // Folosim 'deleteMany' pentru a șterge toate intrările
     const deleteResult = await prisma.analysisResult.deleteMany({
       where: {
-        userId: userId, // Doar ale userului logat
+        userId: userId, // Doar al userului logat
         date: {
           gte: startOfDay,
           lte: endOfDay,

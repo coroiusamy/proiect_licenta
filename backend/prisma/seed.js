@@ -60,8 +60,8 @@ const analysisTypesData = [
     name: 'Bilirubina indirecta',
     displayName: 'Bilirubină indirectă',
     unit: 'mg/dL',
-    refMin: 0.1, // Valori de referință calculate (Total Min - Direct Max)
-    refMax: 1.0, // Valori de referință calculate (Total Max - Direct Min)
+    refMin: 0.1,
+    refMax: 1.0,
     interpretationHigh:
       'Bilirubina indirectă crescută. Poate indica hemoliză (distrugerea eritrocitelor) sau sindrom Gilbert.',
     interpretationNormal: 'Bilirubina indirectă este în limite normale.',
@@ -143,7 +143,7 @@ const analysisTypesData = [
   // ============================================
   {
     name: 'Albumina%',
-    displayName: 'Albumină',
+    displayName: 'Albumină (%)',
     unit: '%',
     refMin: 53.8,
     refMax: 65.2,
@@ -153,7 +153,7 @@ const analysisTypesData = [
   },
   {
     name: 'Alfa 1 gl%',
-    displayName: 'Alfa 1 Globuline',
+    displayName: 'Alfa 1 Globuline (%)',
     unit: '%',
     refMin: 1.1,
     refMax: 3.7,
@@ -162,7 +162,7 @@ const analysisTypesData = [
   },
   {
     name: 'Alfa 2 gl%',
-    displayName: 'Alfa 2 Globuline',
+    displayName: 'Alfa 2 Globuline (%)',
     unit: '%',
     refMin: 8.5,
     refMax: 14.5,
@@ -171,7 +171,7 @@ const analysisTypesData = [
   },
   {
     name: 'Beta gl%',
-    displayName: 'Beta Globuline',
+    displayName: 'Beta Globuline (%)',
     unit: '%',
     refMin: 8.6,
     refMax: 14.8,
@@ -180,7 +180,7 @@ const analysisTypesData = [
   },
   {
     name: 'Gamma gl%',
-    displayName: 'Gamma Globuline',
+    displayName: 'Gamma Globuline (%)',
     unit: '%',
     refMin: 9.2,
     refMax: 18.2,
@@ -351,13 +351,9 @@ const analysisTypesData = [
   // ============================================
   // FORMULA LEUCOCITARĂ (Procentaje ȘI valori absolute)
   // ============================================
-  // NOTĂ: În PDF-urile Synevo, fiecare tip apare de 2 ori:
-  // 1. Ca procentaj (ex: "Neutrofil 63 %")
-  // 2. Ca valoare absolută (ex: "Neutrofil 3.66 mii/μL")
-  // Parser-ul va extrage PRIMA valoare întâlnită după numele analizei
 
   {
-    name: 'Neutrofil',
+    name: 'Neutrofil %',
     displayName: 'Neutrofile (%)',
     unit: '%',
     refMin: 40,
@@ -368,7 +364,16 @@ const analysisTypesData = [
       'Neutrofilie. Indică de obicei infecție bacteriană, inflamație sau stres fizic.',
   },
   {
-    name: 'Limfocit',
+    name: 'Neutrofil mii/uL',
+    displayName: 'Neutrofile (Absolut)',
+    unit: 'mii/uL',
+    refMin: 1.8,
+    refMax: 8.0,
+    interpretationNormal: 'Număr absolut de neutrofile normal.',
+  },
+
+  {
+    name: 'Limfocit %',
     displayName: 'Limfocite (%)',
     unit: '%',
     refMin: 20,
@@ -376,59 +381,96 @@ const analysisTypesData = [
     interpretationLow:
       'Limfopenie. Poate indica imunosupresie sau infecții acute.',
     interpretationNormal: 'Procentul de limfocite este normal.',
-    interpretationHigh:
-      'Limfocitoză. Caracteristică pentru infecții virale (mononucleoză, rujeolă) sau leucemie limfocitară cronică.',
+    interpretationHigh: 'Limfocitoză. Caracteristică pentru infecții virale.',
   },
   {
-    name: 'Monocit',
+    name: 'Limfocit mii/uL',
+    displayName: 'Limfocite (Absolut)',
+    unit: 'mii/uL',
+    refMin: 1.5,
+    refMax: 6.5,
+    interpretationNormal: 'Număr absolut de limfocite normal.',
+  },
+
+  {
+    name: 'Monocit %',
     displayName: 'Monocite (%)',
     unit: '%',
     refMin: 0,
     refMax: 15,
     interpretationHigh:
-      'Monocitoză. Poate indica infecții cronice (tuberculoză), inflamație sau boli autoimune.',
+      'Monocitoză. Poate indica infecții cronice (tuberculoză), inflamație.',
     interpretationNormal: 'Procentul de monocite este normal.',
   },
   {
-    name: 'Eozinofil',
+    name: 'Monocit mii/uL',
+    displayName: 'Monocite (Absolut)',
+    unit: 'mii/uL',
+    refMin: 0.3,
+    refMax: 1.0,
+    interpretationNormal: 'Număr absolut de monocite normal.',
+  },
+
+  {
+    name: 'Eozinofil %',
     displayName: 'Eozinofile (%)',
     unit: '%',
     refMin: 0,
     refMax: 7,
     interpretationHigh:
-      'Eozinofilie. Caracteristică pentru alergii, astm, infecții parazitare sau boli de piele.',
+      'Eozinofilie. Caracteristică pentru alergii, astm, infecții parazitare.',
     interpretationNormal: 'Procentul de eozinofile este normal.',
   },
   {
-    name: 'Bazofil',
+    name: 'Eozinofil mii/uL',
+    displayName: 'Eozinofile (Absolut)',
+    unit: 'mii/uL',
+    refMin: 0.05,
+    refMax: 0.7,
+    interpretationNormal: 'Număr absolut de eozinofile normal.',
+  },
+
+  {
+    name: 'Bazofil %',
     displayName: 'Bazofile (%)',
     unit: '%',
     refMin: 0,
     refMax: 2,
     interpretationHigh:
-      'Bazofilie (rar). Poate apărea în leucemie mieloidă cronică sau reacții alergice severe.',
+      'Bazofilie (rar). Poate apărea în leucemie mieloidă cronică.',
     interpretationNormal: 'Procentul de bazofile este normal.',
   },
-
-  // Note: În PDF-ul Synevo, valorile absolute (mii/μL) apar imediat după procentaje
-  // dar au același nume. Parser-ul va extrage PRIMA valoare (%).
-  // Dacă vrei și valorile absolute, ar trebui să existe intrări separate în PDF
-  // sau să modifici logica parser-ului să detecteze unitatea de măsură.
+  {
+    name: 'Bazofil mii/uL',
+    displayName: 'Bazofile (Absolut)',
+    unit: 'mii/uL',
+    refMin: 0,
+    refMax: 0.2,
+    interpretationNormal: 'Număr absolut de bazofile normal.',
+  },
 
   // ============================================
   // RETICULOCITE (Eritrocite imature)
   // ============================================
   {
-    name: 'Reticulocite',
-    displayName: 'Reticulocite',
+    name: 'Reticulocite %',
+    displayName: 'Reticulocite (%)',
     unit: '%',
     refMin: 0.2,
     refMax: 2.0,
     interpretationHigh:
-      'Reticulocitoză. Indică producție crescută de eritrocite (hemoliză, pierdere acută de sânge sau răspuns la tratament cu fier/B12).',
+      'Reticulocitoză. Indică producție crescută de eritrocite.',
     interpretationNormal: 'Procentul de reticulocite este normal.',
     interpretationLow:
-      'Reticulocitopenie. Indică producție scăzută de eritrocite (aplazia medulară, anemii aregerative).',
+      'Reticulocitopenie. Indică producție scăzută de eritrocite.',
+  },
+  {
+    name: 'Reticulocite mii/uL',
+    displayName: 'Reticulocite (Absolut)',
+    unit: 'mii/uL',
+    refMin: 30,
+    refMax: 120,
+    interpretationNormal: 'Număr absolut de reticulocite normal.',
   },
   {
     name: 'Fractia reticulocitelor imature',
@@ -463,7 +505,7 @@ const analysisTypesData = [
     refMax: 20,
     interpretationNormal: 'Negativ. Fără semne serologice de boală celiacă.',
     interpretationHigh:
-      'Pozitiv. Sugestiv pentru boală celiacă (intoleranță la gluten). Se recomandă biopsie intestinală pentru confirmare.',
+      'Pozitiv. Sugestiv pentru boală celiacă (intoleranță la gluten).',
   },
   {
     name: 'Anticorpi anti-transglutaminaza IgG',
@@ -485,11 +527,9 @@ const analysisTypesData = [
     unit: '',
     refMin: 1.015,
     refMax: 1.025,
-    interpretationLow:
-      'Urină diluată (hipostenuria). Poate indica polidipsie, diabet insipid sau insuficiență renală.',
+    interpretationLow: 'Urină diluată (hipostenuria).',
     interpretationNormal: 'Densitatea urinară este normală.',
-    interpretationHigh:
-      'Urină concentrată (hiperstenuria). Poate indica deshidratare, glicozurie sau proteinurie.',
+    interpretationHigh: 'Urină concentrată (hiperstenuria).',
   },
   {
     name: 'pH',
@@ -497,11 +537,9 @@ const analysisTypesData = [
     unit: '',
     refMin: 4.8,
     refMax: 7.4,
-    interpretationLow:
-      'Urină acidă. Poate apărea în acidoză metabolică, diabet zaharat, dietă hiperproteică.',
+    interpretationLow: 'Urină acidă.',
     interpretationNormal: 'pH-ul urinar este normal.',
-    interpretationHigh:
-      'Urină alcalină. Poate indica infecție urinară, acidoză respiratorie, dietă vegetariană.',
+    interpretationHigh: 'Urină alcalină.',
   },
   {
     name: 'nitriti',
@@ -509,7 +547,7 @@ const analysisTypesData = [
     unit: '',
     interpretationNormal: 'Negativ. Fără semne de infecție bacteriană urinară.',
     interpretationHigh:
-      'Pozitiv. Indică prezența bacteriilor în urină (infecție urinară). Se recomandă urocultură și antibiogramă.',
+      'Pozitiv. Indică prezența bacteriilor în urină (infecție urinară).',
   },
   {
     name: 'leucocite (esteraza granulocitara)',
@@ -517,7 +555,7 @@ const analysisTypesData = [
     unit: '/μL',
     interpretationNormal: 'Negativ. Fără leucocite în urină.',
     interpretationHigh:
-      'Pozitiv. Leucociturie - indică inflamație sau infecție a tractului urinar.',
+      'Pozitiv. Leucociturie - indică inflamație sau infecție.',
   },
   {
     name: 'proteine',
@@ -525,8 +563,7 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 0,
     refMax: 10,
-    interpretationHigh:
-      'Proteinurie. Poate indica boală renală (glomerulonefrită, sindrom nefrotic), infecție urinară sau efort fizic intens.',
+    interpretationHigh: 'Proteinurie. Poate indica boală renală.',
     interpretationNormal: 'Fără proteine în urină (normal).',
   },
   {
@@ -534,8 +571,7 @@ const analysisTypesData = [
     displayName: 'Glucoză urinară',
     unit: 'mg/dL',
     interpretationNormal: 'Nedetectabil (normal). Fără glucoză în urină.',
-    interpretationHigh:
-      'Glicozurie. Indică diabet zaharat necontrolat sau (rar) glicozurie renală.',
+    interpretationHigh: 'Glicozurie. Indică diabet zaharat necontrolat.',
   },
   {
     name: 'corpi cetonici',
@@ -543,7 +579,7 @@ const analysisTypesData = [
     unit: 'mg/dL',
     interpretationNormal: 'Negativ. Fără corpi cetonici în urină.',
     interpretationHigh:
-      'Cetonurie. Poate indica diabet zaharat decompensat (cetoacidoză), înfometare, dietă ketogenă sau vărsături prelungite.',
+      'Cetonurie. Poate indica diabet zaharat decompensat (cetoacidoză).',
   },
   {
     name: 'urobilinogen',
@@ -561,7 +597,7 @@ const analysisTypesData = [
     unit: 'mg/dL',
     interpretationNormal: 'Negativ. Fără bilirubină în urină (normal).',
     interpretationHigh:
-      'Bilirubinurie. Indică icter obstructiv sau hepatocelular (boală hepatică sau a căilor biliare).',
+      'Bilirubinurie. Indică icter obstructiv sau hepatocelular.',
   },
   {
     name: 'hematii (hemoglobina)',
@@ -569,7 +605,7 @@ const analysisTypesData = [
     unit: '/μL',
     interpretationNormal: 'Negativ. Fără sânge în urină.',
     interpretationHigh:
-      'Hematurie. Poate indica infecție urinară, litiază renală, traumatism, tumori sau boli renale.',
+      'Hematurie. Poate indica infecție urinară, litiază renală.',
   },
 
   // ============================================
@@ -582,21 +618,20 @@ const analysisTypesData = [
     refMin: 0,
     refMax: 4,
     interpretationHigh:
-      'Leucociturie. Indică inflamație sau infecție a tractului urinar (cistită, pielonefrită).',
+      'Leucociturie. Indică inflamație sau infecție a tractului urinar.',
     interpretationNormal:
-      'Leucocitele în sediment urinar sunt în limite normale (1-4/câmp).',
+      'Leucocitele în sediment urinar sunt în limite normale.',
   },
   {
     name: 'Cristale oxalat de calciu',
     displayName: 'Cristale de oxalat de calciu',
     unit: '',
     interpretationNormal: 'Absente (normal).',
-    interpretationHigh:
-      'Prezente. Pot apărea în urină normală acidă, dar în exces indică risc de litiază renală (pietre la rinichi).',
+    interpretationHigh: 'Prezente. Pot indica risc de litiază renală.',
   },
 
   // ============================================
-  // ALTE TESTE COMUNE (nu sunt în PDF-uri dar sunt utile)
+  // ALTE TESTE COMUNE BIOCHIMICE
   // ============================================
   {
     name: 'Colesterol Total',
@@ -604,9 +639,8 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 0,
     refMax: 200,
-    interpretationHigh:
-      'Hipercolesterolemie. Risc cardiovascular crescut. Se recomandă modificarea dietei și consult cardiologic.',
-    interpretationNormal: 'Colesterolul total este optim (sub 200 mg/dL).',
+    interpretationHigh: 'Hipercolesterolemie. Risc cardiovascular crescut.',
+    interpretationNormal: 'Colesterolul total este optim.',
   },
   {
     name: 'Colesterol HDL',
@@ -614,10 +648,8 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 40,
     refMax: 999,
-    interpretationLow:
-      'HDL scăzut. Risc cardiovascular crescut. Se recomandă exercițiu fizic și dietă bogată în grăsimi sănătoase (omega-3).',
-    interpretationNormal:
-      'HDL în limite protectoare (peste 40 mg/dL, ideal peste 60).',
+    interpretationLow: 'HDL scăzut. Risc cardiovascular crescut.',
+    interpretationNormal: 'HDL în limite protectoare.',
   },
   {
     name: 'Colesterol LDL',
@@ -625,9 +657,8 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 0,
     refMax: 100,
-    interpretationHigh:
-      'LDL crescut. Risc major de ateroscleroză și infarct miocardic. Se recomandă dietă săracă în grăsimi saturate și consult medical.',
-    interpretationNormal: 'LDL optim (sub 100 mg/dL).',
+    interpretationHigh: 'LDL crescut. Risc major de ateroscleroză.',
+    interpretationNormal: 'LDL optim.',
   },
   {
     name: 'Trigliceride',
@@ -635,10 +666,8 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 0,
     refMax: 150,
-    interpretationHigh:
-      'Hipertrigliceridemie. Risc cardiovascular. Adesea legat de obezitate, consum excesiv de carbohidrați/alcool sau diabet.',
-    interpretationNormal:
-      'Trigliceridele sunt în limite normale (sub 150 mg/dL).',
+    interpretationHigh: 'Hipertrigliceridemie. Risc cardiovascular.',
+    interpretationNormal: 'Trigliceridele sunt în limite normale.',
   },
   {
     name: 'Glicemie (Glucoză serică)',
@@ -646,11 +675,10 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 70,
     refMax: 99,
-    interpretationLow:
-      'Hipoglicemie. Poate cauza amețeli, transpirații, tremurături. Necesită atenție medicală.',
-    interpretationNormal: 'Glicemia la jeun este normală (70-99 mg/dL).',
+    interpretationLow: 'Hipoglicemie. Necesită atenție medicală.',
+    interpretationNormal: 'Glicemia la jeun este normală.',
     interpretationHigh:
-      'Hiperglicemie. Pre-diabet (100-125) sau diabet zaharat (≥126). Se recomandă HbA1c și consult endocrinologic.',
+      'Hiperglicemie. Pre-diabet (100-125) sau diabet (≥126).',
   },
   {
     name: 'Hemoglobină Glicozilată (HbA1c)',
@@ -658,10 +686,9 @@ const analysisTypesData = [
     unit: '%',
     refMin: 0,
     refMax: 5.7,
-    interpretationNormal:
-      'Media glicemiei pe ultimele 2-3 luni este normală. Risc scăzut de diabet.',
+    interpretationNormal: 'Media glicemiei pe ultimele 2-3 luni este normală.',
     interpretationHigh:
-      'HbA1c crescut. Pre-diabet (5.7-6.4%) sau diabet (≥6.5%). Necesită monitorizare strictă și tratament.',
+      'HbA1c crescut. Pre-diabet (5.7-6.4%) sau diabet (≥6.5%).',
   },
   {
     name: 'Uree serică',
@@ -669,10 +696,9 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 15,
     refMax: 45,
-    interpretationLow:
-      'Uree scăzută. Poate indica malnutriție proteică severă sau boală hepatică avansată.',
+    interpretationLow: 'Uree scăzută. Poate indica malnutriție proteică.',
     interpretationHigh:
-      'Azotemie (uree crescută). Poate indica disfuncție renală, deshidratare sau dietă hiperproteică.',
+      'Azotemie (uree crescută). Poate indica disfuncție renală.',
     interpretationNormal: 'Ureea este în limite normale.',
   },
   {
@@ -682,7 +708,7 @@ const analysisTypesData = [
     refMin: 0.6,
     refMax: 1.3,
     interpretationHigh:
-      'Creatinină crescută. Indicator important al funcției renale reduse (insuficiență renală). Se recomandă consult nefrologic și calcul RFG.',
+      'Creatinină crescută. Indicator al funcției renale reduse.',
     interpretationNormal: 'Creatinina este în limite normale.',
   },
   {
@@ -691,8 +717,7 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 3.5,
     refMax: 7.2,
-    interpretationHigh:
-      'Hiperuricemie. Risc de gută (artrita gutoasă) și litiază renală. Legat de dietă bogată în purine (carne roșie, fructe de mare) sau disfuncție renală.',
+    interpretationHigh: 'Hiperuricemie. Risc de gută și litiază renală.',
     interpretationNormal: 'Acidul uric este în limite normale.',
   },
   {
@@ -702,8 +727,7 @@ const analysisTypesData = [
     refMin: 0,
     refMax: 20,
     interpretationNormal: 'VSH normal. Fără semne de inflamație acută.',
-    interpretationHigh:
-      'VSH crescut. Indicator nespecific de inflamație, infecție, anemie sau boli autoimune (artrita reumatoidă, lupus).',
+    interpretationHigh: 'VSH crescut. Indicator nespecific de inflamație.',
   },
   {
     name: 'TSH (Hormón tiroidian)',
@@ -711,11 +735,9 @@ const analysisTypesData = [
     unit: 'μUI/mL',
     refMin: 0.4,
     refMax: 4.0,
-    interpretationLow:
-      'TSH scăzut. Hipertiroidism (glanda tiroidă hipeactivă). Simptome: palpitații, scădere în greutate, nervozitate.',
+    interpretationLow: 'TSH scăzut. Hipertiroidism.',
     interpretationNormal: 'Funcția tiroidiană este normală.',
-    interpretationHigh:
-      'TSH crescut. Hipotiroidism (glanda tiroidă hipoactivă). Simptome: oboseală, creștere în greutate, intoleranță la rece.',
+    interpretationHigh: 'TSH crescut. Hipotiroidism.',
   },
   {
     name: 'Vitamina D (25-OH)',
@@ -723,11 +745,9 @@ const analysisTypesData = [
     unit: 'ng/mL',
     refMin: 30,
     refMax: 100,
-    interpretationLow:
-      'Deficit de vitamina D. Risc de osteoporoză, slăbiciune musculară și imunitate scăzută. Se recomandă suplimentare.',
-    interpretationNormal: 'Nivelul de vitamina D este optim (30-100 ng/mL).',
-    interpretationHigh:
-      'Vitamina D foarte crescută. Poate indica intoxicație (hipercalcemie). Rareori periculoasă dacă sub 150 ng/mL.',
+    interpretationLow: 'Deficit de vitamina D. Risc de osteoporoză.',
+    interpretationNormal: 'Nivelul de vitamina D este optim.',
+    interpretationHigh: 'Vitamina D foarte crescută. Poate indica intoxicație.',
   },
   {
     name: 'Vitamina B12',
@@ -736,7 +756,7 @@ const analysisTypesData = [
     refMin: 200,
     refMax: 900,
     interpretationLow:
-      'Deficit de B12. Cauze: dietă vegetariană/vegană strictă, malabsorbție, anemie pernicioasă. Simptome: anemie megaloblastică, neuropatie.',
+      'Deficit de B12. Risc de anemie megaloblastică, neuropatie.',
     interpretationNormal: 'Vitamina B12 este în limite normale.',
   },
   {
@@ -745,22 +765,15 @@ const analysisTypesData = [
     unit: 'ng/mL',
     refMin: 3,
     refMax: 17,
-    interpretationLow:
-      'Deficit de acid folic. Cauze: dietă săracă în verdeturi, alcoolism, malabsorbție. Risc de anemie megaloblastică și defecte de tub neural la gravide.',
+    interpretationLow: 'Deficit de acid folic. Risc de anemie megaloblastică.',
     interpretationNormal: 'Acidul folic este în limite normale.',
   },
-
-  // ============================================
-  // TESTE SEROLOGICE - Hepatite virale
-  // ============================================
   {
     name: 'Ag HBs (Hepatita B)',
     displayName: 'Antigen HBs (Hepatita B)',
     unit: '',
-    interpretationNormal:
-      'Negativ. Nu există infecție activă cu virusul hepatitei B.',
-    interpretationHigh:
-      'Pozitiv/Reactiv. Indică infecție activă cu virusul hepatitei B (VHB). Necesită consult medical urgent și monitorizare.',
+    interpretationNormal: 'Negativ. Nu există infecție activă cu VHB.',
+    interpretationHigh: 'Pozitiv/Reactiv. Indică infecție activă cu VHB.',
   },
   {
     name: 'Ac Anti-HBs (Hepatita B)',
@@ -768,51 +781,40 @@ const analysisTypesData = [
     unit: 'mUI/mL',
     refMin: 10,
     refMax: 999999,
-    interpretationLow:
-      'Negativ sau sub 10 mUI/mL. Lipsă de imunitate față de hepatita B. Se recomandă vaccinare sau rapel.',
-    interpretationNormal:
-      'Pozitiv (peste 10 mUI/mL). Imunitate față de hepatita B (prin vaccinare sau infecție anterioară vindecată).',
+    interpretationLow: 'Negativ (sub 10). Lipsă de imunitate.',
+    interpretationNormal: 'Pozitiv (peste 10). Imunitate prezentă.',
   },
   {
     name: 'Ac Anti-HCV (Hepatita C)',
     displayName: 'Anticorpi Anti-HCV (Hepatita C)',
     unit: '',
-    interpretationNormal:
-      'Negativ. Fără contact anterior cu virusul hepatitei C.',
-    interpretationHigh:
-      'Pozitiv/Reactiv. Indică infecție prezentă sau trecută cu VHC. Necesită confirmare prin ARN-VHC și consult medical.',
+    interpretationNormal: 'Negativ. Fără contact cu VHC.',
+    interpretationHigh: 'Pozitiv/Reactiv. Indică infecție VHC.',
   },
   {
     name: 'Ag HIV 1+2',
     displayName: 'Test HIV (Anticorpi + Antigen)',
     unit: '',
-    interpretationNormal: 'Negativ. Fără infecție cu virusul HIV.',
+    interpretationNormal: 'Negativ. Fără infecție cu HIV.',
     interpretationHigh:
-      'Pozitiv/Reactiv. Test de screening pozitiv pentru HIV. Necesită confirmare prin Western Blot și consult la specialist boli infecțioase.',
+      'Pozitiv/Reactiv. Test de screening pozitiv pentru HIV.',
   },
-
-  // ============================================
-  // MARKERI CARDIACI
-  // ============================================
   {
     name: 'Troponina I',
     displayName: 'Troponină I (marker cardiac)',
     unit: 'ng/mL',
     refMin: 0,
     refMax: 0.04,
-    interpretationHigh:
-      'Troponină crescută. Indică leziune a mușchiului cardiac (infarct miocardic, angină instabilă). URGENȚĂ MEDICALĂ!',
-    interpretationNormal:
-      'Troponina normală. Fără semne de leziune cardiacă recentă.',
+    interpretationHigh: 'Troponină crescută. Indică leziune cardiacă. URGENȚĂ!',
+    interpretationNormal: 'Troponina normală.',
   },
   {
     name: 'CK-MB (Creatinkinaza)',
-    displayName: 'CK-MB (Creatinkinaza fracția MB)',
+    displayName: 'CK-MB',
     unit: 'U/L',
     refMin: 0,
     refMax: 25,
-    interpretationHigh:
-      'CK-MB crescut. Indică posibil infarct miocardic sau alte leziuni cardiace.',
+    interpretationHigh: 'CK-MB crescut. Indică posibil infarct miocardic.',
     interpretationNormal: 'CK-MB în limite normale.',
   },
   {
@@ -822,13 +824,9 @@ const analysisTypesData = [
     refMin: 135,
     refMax: 225,
     interpretationHigh:
-      'LDH crescut. Indicator nespecific de leziune tisulară (inimă, ficat, mușchi, eritrocite). Poate indica infarct, anemie hemolitică sau cancer.',
+      'LDH crescut. Indicator nespecific de leziune tisulară.',
     interpretationNormal: 'LDH în limite normale.',
   },
-
-  // ============================================
-  // HORMONI TIROIDIENI
-  // ============================================
   {
     name: 'T3 (Triiodotironina)',
     displayName: 'T3 liber',
@@ -837,8 +835,7 @@ const analysisTypesData = [
     refMax: 4.4,
     interpretationLow: 'T3 scăzut. Hipotiroidism.',
     interpretationNormal: 'T3 în limite normale.',
-    interpretationHigh:
-      'T3 crescut. Hipertiroidism (boala Graves, adenom toxic).',
+    interpretationHigh: 'T3 crescut. Hipertiroidism.',
   },
   {
     name: 'T4 (Tiroxina)',
@@ -850,19 +847,14 @@ const analysisTypesData = [
     interpretationNormal: 'T4 în limite normale.',
     interpretationHigh: 'T4 crescut. Hipertiroidism.',
   },
-
-  // ============================================
-  // COAGULARE
-  // ============================================
   {
     name: 'INR',
-    displayName: 'INR (Raport internațional normalizat)',
+    displayName: 'INR',
     unit: '',
     refMin: 0.8,
     refMax: 1.2,
-    interpretationHigh:
-      'INR crescut. Sânge "subțire" - risc de sângerare. Poate indica tratament cu anticoagulante (warfarină) sau deficit de vitamina K.',
-    interpretationNormal: 'INR normal (0.8-1.2). Coagulare normală.',
+    interpretationHigh: 'INR crescut. Sânge "subțire", risc de sângerare.',
+    interpretationNormal: 'INR normal. Coagulare normală.',
   },
   {
     name: 'Timp de protrombina (PT)',
@@ -870,18 +862,16 @@ const analysisTypesData = [
     unit: 'secunde',
     refMin: 11,
     refMax: 13.5,
-    interpretationHigh:
-      'PT prelungit. Risc de sângerare. Cauze: deficit de factori de coagulare, boală hepatică, anticoagulante.',
+    interpretationHigh: 'PT prelungit. Risc de sângerare.',
     interpretationNormal: 'Timpul de protrombină este normal.',
   },
   {
     name: 'APTT',
-    displayName: 'APTT (Timp parțial de tromboplastină)',
+    displayName: 'APTT',
     unit: 'secunde',
     refMin: 25,
     refMax: 35,
-    interpretationHigh:
-      'APTT prelungit. Risc de sângerare. Cauze: hemofilie, deficit de factori de coagulare, tratament cu heparină.',
+    interpretationHigh: 'APTT prelungit. Risc de sângerare.',
     interpretationNormal: 'APTT în limite normale.',
   },
   {
@@ -890,26 +880,18 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 200,
     refMax: 400,
-    interpretationLow:
-      'Fibrinogen scăzut. Risc de sângerare severă (coagulare intravasculară diseminată - CIVD).',
+    interpretationLow: 'Fibrinogen scăzut. Risc de sângerare severă.',
     interpretationNormal: 'Fibrinogenul este normal.',
-    interpretationHigh:
-      'Fibrinogen crescut. Poate indica inflamație acută sau risc tromboembolic.',
+    interpretationHigh: 'Fibrinogen crescut. Poate indica inflamație.',
   },
-
-  // ============================================
-  // HORMONI SEXUALI (Femei)
-  // ============================================
   {
     name: 'Estradiol (E2)',
     displayName: 'Estradiol',
     unit: 'pg/mL',
     refMin: 15,
     refMax: 350,
-    interpretationLow:
-      'Estradiol scăzut. Poate indica menopauză, insuficiență ovariană sau hipopituitarism.',
-    interpretationNormal:
-      'Estradiol în limite normale (variază în funcție de faza ciclului menstrual).',
+    interpretationLow: 'Estradiol scăzut. Poate indica menopauză.',
+    interpretationNormal: 'Estradiol în limite normale.',
   },
   {
     name: 'Progesteron',
@@ -917,10 +899,8 @@ const analysisTypesData = [
     unit: 'ng/mL',
     refMin: 0.2,
     refMax: 25,
-    interpretationLow:
-      'Progesteron scăzut. Poate indica lipsa ovulației sau faza foliculară a ciclului.',
-    interpretationNormal:
-      'Progesteron normal (variază în funcție de faza ciclului).',
+    interpretationLow: 'Progesteron scăzut. Poate indica lipsa ovulației.',
+    interpretationNormal: 'Progesteron normal.',
   },
   {
     name: 'FSH (Hormon foliculostimulant)',
@@ -928,8 +908,7 @@ const analysisTypesData = [
     unit: 'mUI/mL',
     refMin: 1.5,
     refMax: 12.4,
-    interpretationHigh:
-      'FSH crescut. Poate indica menopauză, insuficiență ovariană primară sau (la bărbați) azoospermie.',
+    interpretationHigh: 'FSH crescut. Poate indica menopauză.',
     interpretationNormal: 'FSH în limite normale.',
   },
   {
@@ -938,22 +917,16 @@ const analysisTypesData = [
     unit: 'mUI/mL',
     refMin: 1.7,
     refMax: 8.6,
-    interpretationHigh:
-      'LH crescut. Poate indica ovulație (normal), menopauză sau sindrom ovarian polichistic (PCOS).',
+    interpretationHigh: 'LH crescut. Poate indica ovulație sau menopauză.',
     interpretationNormal: 'LH în limite normale.',
   },
-
-  // ============================================
-  // HORMONI SEXUALI (Bărbați)
-  // ============================================
   {
     name: 'Testosteron total',
     displayName: 'Testosteron total',
     unit: 'ng/dL',
     refMin: 300,
     refMax: 1000,
-    interpretationLow:
-      'Hipogonadism (testosteron scăzut). Simptome: scăderea libidoului, disfuncție erectilă, oboseală, pierdere de masă musculară.',
+    interpretationLow: 'Hipogonadism (testosteron scăzut).',
     interpretationNormal: 'Testosteronul este în limite normale.',
   },
   {
@@ -962,22 +935,16 @@ const analysisTypesData = [
     unit: 'ng/mL',
     refMin: 0,
     refMax: 4.0,
-    interpretationHigh:
-      'PSA crescut. Poate indica hipertrofie benignă de prostată, prostatită sau (rar) cancer de prostată. Se recomandă consult urologic.',
-    interpretationNormal: 'PSA în limite normale (sub 4 ng/mL).',
+    interpretationHigh: 'PSA crescut. Poate indica HBP sau cancer de prostată.',
+    interpretationNormal: 'PSA în limite normale.',
   },
-
-  // ============================================
-  // ALTE MARKERI IMPORTANȚI
-  // ============================================
   {
     name: 'Homocisteina',
     displayName: 'Homocisteină',
     unit: 'μmol/L',
     refMin: 5,
     refMax: 15,
-    interpretationHigh:
-      'Homocisteină crescută. Risc cardiovascular crescut (ateroscleroză, tromboză). Cauze: deficit de B6, B12, acid folic.',
+    interpretationHigh: 'Homocisteină crescută. Risc cardiovascular crescut.',
     interpretationNormal: 'Homocisteina este în limite normale.',
   },
   {
@@ -986,8 +953,7 @@ const analysisTypesData = [
     unit: 'U/L',
     refMin: 28,
     refMax: 100,
-    interpretationHigh:
-      'Amilază crescută. Indică pancreatită acută sau alte afecțiuni pancreatice.',
+    interpretationHigh: 'Amilază crescută. Indică pancreatită acută.',
     interpretationNormal: 'Amilaza este în limite normale.',
   },
   {
@@ -997,7 +963,7 @@ const analysisTypesData = [
     refMin: 13,
     refMax: 60,
     interpretationHigh:
-      'Lipază crescută. Indicator mai specific pentru pancreatită acută decât amilaza.',
+      'Lipază crescută. Indicator specific pentru pancreatită acută.',
     interpretationNormal: 'Lipaza este în limite normale.',
   },
   {
@@ -1007,7 +973,7 @@ const analysisTypesData = [
     refMin: 40,
     refMax: 150,
     interpretationHigh:
-      'Fosfatază alcalină crescută. Poate indica colestază (obstrucție biliară), boli osoase (Paget, metastaze) sau hepatită.',
+      'Fosfatază alcalină crescută. Poate indica colestază sau boli osoase.',
     interpretationNormal: 'Fosfataza alcalină este în limite normale.',
   },
   {
@@ -1016,11 +982,9 @@ const analysisTypesData = [
     unit: 'mg/dL',
     refMin: 1.7,
     refMax: 2.2,
-    interpretationLow:
-      'Hipomagnezemiie. Poate cauza crampe musculare, aritmii cardiace și slăbiciune.',
+    interpretationLow: 'Hipomagnezemiie. Poate cauza crampe musculare.',
     interpretationNormal: 'Magneziul este în limite normale.',
-    interpretationHigh:
-      'Hipermagnezemiie (rar). Poate apărea în insuficiență renală sau suplimentare excesivă.',
+    interpretationHigh: 'Hipermagnezemiie (rar).',
   },
   {
     name: 'Potasiu (K+)',
@@ -1028,11 +992,9 @@ const analysisTypesData = [
     unit: 'mmol/L',
     refMin: 3.5,
     refMax: 5.1,
-    interpretationLow:
-      'Hipokaliemie. Risc de aritmii cardiace, slăbiciune musculară. Cauze: diuretice, vărsături, diaree.',
+    interpretationLow: 'Hipokaliemie. Risc de aritmii cardiace.',
     interpretationNormal: 'Potasiul este în limite normale.',
-    interpretationHigh:
-      'Hiperkaliemie. Risc de aritmii cardiace SEVERE (stop cardiac). Cauze: insuficiență renală, medicamente (IECA), acidoză. URGENȚĂ!',
+    interpretationHigh: 'Hiperkaliemie. Risc de aritmii cardiace SEVERE.',
   },
   {
     name: 'Sodiu (Na+)',
@@ -1040,11 +1002,9 @@ const analysisTypesData = [
     unit: 'mmol/L',
     refMin: 136,
     refMax: 145,
-    interpretationLow:
-      'Hiponatremie. Poate cauza confuzie, letargie, convulsii. Cauze: exces de lichide, insuficiență cardiacă, diuretice.',
+    interpretationLow: 'Hiponatremie. Poate cauza confuzie, convulsii.',
     interpretationNormal: 'Sodiul este în limite normale.',
-    interpretationHigh:
-      'Hipernatremie. Poate cauza confuzie, sete extremă. Cauze: deshidratare severă, diabet insipid.',
+    interpretationHigh: 'Hipernatremie. Indică deshidratare.',
   },
   {
     name: 'Clor (Cl-)',
@@ -1052,11 +1012,9 @@ const analysisTypesData = [
     unit: 'mmol/L',
     refMin: 98,
     refMax: 107,
-    interpretationLow:
-      'Hipocloremie. Poate apărea în vărsături prelungite sau alcaloză metabolică.',
+    interpretationLow: 'Hipocloremie. Poate apărea în vărsături prelungite.',
     interpretationNormal: 'Clorul este în limite normale.',
-    interpretationHigh:
-      'Hipercloremie. Poate apărea în deshidratare sau acidoză metabolică.',
+    interpretationHigh: 'Hipercloremie. Poate apărea în deshidratare.',
   },
 ];
 
@@ -1067,37 +1025,27 @@ async function main() {
   let updatedCount = 0;
 
   for (const analysis of analysisTypesData) {
-    const existing = await prisma.analysisType.findUnique({
+    const result = await prisma.analysisType.upsert({
       where: { name: analysis.name },
+      update: analysis, // Dacă există, îl actualizează cu datele noi
+      create: analysis, // Dacă nu există, îl creează
     });
 
-    if (existing) {
-      await prisma.analysisType.update({
-        where: { name: analysis.name },
-        data: analysis,
-      });
-      updatedCount++;
-      console.log(`✏️  Actualizat: '${analysis.displayName || analysis.name}'`);
-    } else {
-      await prisma.analysisType.create({
-        data: analysis,
-      });
-      addedCount++;
-      console.log(`✅ Adăugat: '${analysis.displayName || analysis.name}'`);
-    }
+    console.log(`Processed: '${analysis.displayName || analysis.name}'`);
   }
 
+  const totalInDb = await prisma.analysisType.count();
+
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  console.log(`✨ Populare finalizată cu succes!`);
-  console.log(`📊 Total analize: ${analysisTypesData.length}`);
-  console.log(`➕ Adăugate: ${addedCount}`);
-  console.log(`✏️  Actualizate: ${updatedCount}`);
+  console.log(`Populare finalizată cu succes!`);
+  console.log(`Total analize în baza de date: ${totalInDb}`);
+  console.log(`(Scriptul a procesat ${analysisTypesData.length} analize)`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Eroare în timpul populării:', e);
+    console.error('Eroare în timpul populării:', e);
     process.exit(1);
   })
   .finally(async () => {

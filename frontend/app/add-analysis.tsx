@@ -4,61 +4,56 @@ import {
   TouchableOpacity,
   TextInput,
   Button,
-  Platform, // Pentru a detecta iOS vs Android
+  Platform,
   useColorScheme,
   Alert,
+  ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
-import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
+import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// Definim cum arată un Tip de Analiză (ce primim de la API)
 type AnalysisType = {
   id: number;
   name: string;
   unit: string;
-  refMin: number | null;
-  refMax: number | null;
-  // ... și celelalte câmpuri
 };
 
 export default function AddAnalysisScreen() {
   const { token } = useAuth();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
-  // --- Starea (Memoria) Formularului ---
-  const [analysisTypes, setAnalysisTypes] = useState<AnalysisType[]>([]); // Lista de analize din dropdown
+  const [analysisTypes, setAnalysisTypes] = useState<AnalysisType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Câmpurile formularului
+  // Form State
   const [selectedTypeId, setSelectedTypeId] = useState<number | undefined>();
-  const [date, setDate] = useState(new Date()); // Data de azi ca default
-  const [value, setValue] = useState(''); // Valoarea numerică (ex: 95)
-  const [stringValue, setStringValue] = useState(''); // Valoarea text (ex: "Pozitiv")
+  const [date, setDate] = useState(new Date());
+  const [value, setValue] = useState('');
+  const [stringValue, setStringValue] = useState('');
   const [notes, setNotes] = useState('');
-
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // --- Efect: Încărcarea Analizelor de la API ---
   useEffect(() => {
     const fetchAnalysisTypes = async () => {
       try {
-        setIsLoading(true);
         const response = await axios.get(`${API_URL}/api/analyses/types`);
         setAnalysisTypes(response.data);
       } catch (error) {
         Toast.show({
           type: 'error',
-          text1: 'Eroare la încărcarea analizelor',
-          text2: 'Te rugăm să încerci din nou.',
+          text1: 'Eroare',
+          text2: 'Nu s-au putut încărca tipurile de analize.',
         });
       } finally {
         setIsLoading(false);
@@ -67,38 +62,30 @@ export default function AddAnalysisScreen() {
     fetchAnalysisTypes();
   }, []);
 
-  // --- Logica de Salvare ---
   const handleSave = async () => {
-    // Validare
     if (!selectedTypeId) {
-      Alert.alert('Eroare', 'Te rugăm să selectezi un tip de analiză.');
+      Alert.alert('Atenție', 'Te rugăm să selectezi un tip de analiză.');
       return;
     }
     if (!value && !stringValue) {
       Alert.alert(
-        'Eroare',
+        'Atenție',
         'Te rugăm să introduci o valoare (numerică sau text).'
       );
       return;
     }
 
     try {
-      // POST /api/analyses (ruta protejată)
       await axios.post(
         `${API_URL}/api/analyses`,
         {
           analysisTypeId: selectedTypeId,
-          date: date.toISOString(), // Trimitem data în format standard
-          value: value || null, // Trimite valoarea sau null
+          date: date.toISOString(),
+          value: value || null,
           stringValue: stringValue || null,
           notes: notes || null,
         },
-        {
-          headers: {
-            // AICI trimitem token-ul pe care îl cere "gardianul" din backend
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       Toast.show({
@@ -106,169 +93,198 @@ export default function AddAnalysisScreen() {
         text1: 'Succes',
         text2: 'Analiza a fost salvată!',
       });
-
-      // După salvare, trimite utilizatorul înapoi
       router.back();
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Eroare la salvare',
-        text2: 'A apărut o problemă. Încearcă din nou.',
+        text1: 'Eroare',
+        text2: 'Salvarea a eșuat.',
       });
     }
   };
 
-  // Funcție pentru schimbarea datei
-  const onDateChange = (event: any, selectedDate: Date | undefined) => {
-    const currentDate = selectedDate || date;
-    setShowDatePicker(Platform.OS === 'ios'); // Pe iOS se închide manual
-    setDate(currentDate);
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) setDate(selectedDate);
   };
 
-  // --- Stiluri Dinamice (pentru Dark/Light Mode) ---
-  const inputStyle = {
-    ...styles.input,
-    color: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-    borderColor: colorScheme === 'dark' ? '#444' : 'gray',
-  };
-  const placeholderTextColor = colorScheme === 'dark' ? '#999' : '#666';
-  const pickerStyle = {
-    color: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-    backgroundColor: colorScheme === 'dark' ? '#222' : '#FFFFFF',
-  };
+  // Dynamic Styles helpers
+  const textColor = isDark ? '#FFFFFF' : '#000000';
+  const inputBorderColor = isDark ? '#444' : '#CCC';
+  const placeholderColor = isDark ? '#888' : '#666';
 
-  // --- Afișare ---
   if (isLoading) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Se încarcă lista de analize...</ThemedText>
+      <ThemedView style={[styles.container, styles.centerContent]}>
+        <ThemedText>Se încarcă...</ThemedText>
       </ThemedView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Adaugă Analiză Nouă</ThemedText>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ThemedText style={styles.title}>Adaugă Analiză Nouă</ThemedText>
 
-      {/* --- Picker-ul (Dropdown) --- */}
-      <ThemedText style={styles.label}>Tipul Analizei</ThemedText>
-      <ThemedView style={styles.pickerContainer}>
-        <Picker
-          selectedValue={selectedTypeId}
-          onValueChange={(itemValue) => setSelectedTypeId(itemValue)}
-          style={pickerStyle}
+        <ThemedText style={styles.label}>Tipul Analizei</ThemedText>
+        <ThemedView
+          style={[styles.pickerContainer, { borderColor: inputBorderColor }]}
         >
-          <Picker.Item label="-- Selectează o analiză --" value={undefined} />
-          {analysisTypes.map((type) => (
-            <Picker.Item key={type.id} label={type.name} value={type.id} />
-          ))}
-        </Picker>
-      </ThemedView>
+          <Picker
+            selectedValue={selectedTypeId}
+            onValueChange={setSelectedTypeId}
+            dropdownIconColor={textColor}
+            style={{ color: textColor }}
+          >
+            <Picker.Item
+              label="-- Selectează --"
+              value={undefined}
+              color={textColor}
+            />
+            {analysisTypes.map((type) => (
+              <Picker.Item
+                key={type.id}
+                label={type.name}
+                value={type.id}
+                color={textColor}
+              />
+            ))}
+          </Picker>
+        </ThemedView>
 
-      {/* --- Date Picker --- */}
-      <ThemedText style={styles.label}>Data Rezultatului</ThemedText>
-      {/* Pe Android, butonul deschide picker-ul. Pe iOS, e vizibil direct. */}
-      {Platform.OS === 'android' && (
-        <Button
-          onPress={() => setShowDatePicker(true)}
-          title={`Data selectată: ${date.toLocaleDateString()}`}
+        <ThemedText style={styles.label}>Data Rezultatului</ThemedText>
+        <ThemedView style={styles.dateContainer}>
+          {Platform.OS === 'android' && (
+            <Button
+              onPress={() => setShowDatePicker(true)}
+              title={date.toLocaleDateString()}
+              color="#007AFF"
+            />
+          )}
+          {(showDatePicker || Platform.OS === 'ios') && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+              themeVariant={colorScheme ?? 'light'}
+            />
+          )}
+        </ThemedView>
+
+        <ThemedText style={styles.label}>Valoare Numerică</ThemedText>
+        <TextInput
+          style={[
+            styles.input,
+            { color: textColor, borderColor: inputBorderColor },
+          ]}
+          placeholder="Ex: 95.5"
+          value={value}
+          onChangeText={setValue}
+          keyboardType="numeric"
+          placeholderTextColor={placeholderColor}
         />
-      )}
-      {(showDatePicker || Platform.OS === 'ios') && (
-        <DateTimePicker
-          testID="dateTimePicker"
-          value={date}
-          mode={'date'}
-          is24Hour={true}
-          display="default"
-          onChange={onDateChange}
+
+        <ThemedText style={styles.label}>Valoare Text</ThemedText>
+        <TextInput
+          style={[
+            styles.input,
+            { color: textColor, borderColor: inputBorderColor },
+          ]}
+          placeholder="Ex: Pozitiv / Negativ"
+          value={stringValue}
+          onChangeText={setStringValue}
+          placeholderTextColor={placeholderColor}
         />
-      )}
 
-      {/* --- Input Valori --- */}
-      <ThemedText style={styles.label}>Valoare Numerică (ex: 95.5)</ThemedText>
-      <TextInput
-        style={inputStyle}
-        placeholder="Doar dacă e număr"
-        value={value}
-        onChangeText={setValue}
-        keyboardType="numeric"
-        placeholderTextColor={placeholderTextColor}
-      />
+        <ThemedText style={styles.label}>Notițe (Opțional)</ThemedText>
+        <TextInput
+          style={[
+            styles.input,
+            styles.notesInput,
+            { color: textColor, borderColor: inputBorderColor },
+          ]}
+          placeholder="Detalii suplimentare..."
+          value={notes}
+          onChangeText={setNotes}
+          placeholderTextColor={placeholderColor}
+          multiline
+        />
 
-      <ThemedText style={styles.label}>Valoare Text (ex: "Pozitiv")</ThemedText>
-      <TextInput
-        style={inputStyle}
-        placeholder="Doar dacă e text"
-        value={stringValue}
-        onChangeText={setStringValue}
-        placeholderTextColor={placeholderTextColor}
-      />
-
-      {/* --- Notițe --- */}
-      <ThemedText style={styles.label}>Notițe (opțional)</ThemedText>
-      <TextInput
-        style={[inputStyle, styles.notesInput]}
-        placeholder="Ex: pe nemâncate"
-        value={notes}
-        onChangeText={setNotes}
-        placeholderTextColor={placeholderTextColor}
-        multiline
-      />
-
-      {/* --- Salvare --- */}
-      <TouchableOpacity style={styles.buttonContainer} onPress={handleSave}>
-        <ThemedText style={styles.buttonText}>Salvează Rezultat</ThemedText>
-      </TouchableOpacity>
-    </ThemedView>
+        <TouchableOpacity style={styles.buttonContainer} onPress={handleSave}>
+          <ThemedText style={styles.buttonText}>Salvează</ThemedText>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
-// --- Stilurile ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContainer: {
     padding: 20,
+    paddingBottom: 40,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 25,
+    marginTop: 10,
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 15,
-    marginBottom: 5,
+    marginBottom: 8,
   },
   pickerContainer: {
-    borderColor: '#444',
     borderWidth: 1,
-    borderRadius: 5,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    overflow: 'hidden', // Important pentru colțuri rotunjite la Picker
+  },
+  dateContainer: {
+    alignItems: Platform.OS === 'ios' ? 'flex-start' : 'stretch',
   },
   input: {
-    height: 40,
+    height: 48,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    borderRadius: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    fontSize: 16,
   },
   notesInput: {
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
-    paddingTop: 8,
+    paddingTop: 12,
   },
   buttonContainer: {
     backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 35,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });
