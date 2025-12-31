@@ -1,22 +1,25 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const { token, isLoading } = useAuth();
   const colorScheme = useColorScheme();
-  const themeColors = Colors[colorScheme ?? 'light']; // Preluăm culorile temei
+  const isDark = colorScheme === 'dark';
+
+  // Define colors directly (no import needed)
+  const activeTintColor = '#007AFF';
+  const inactiveTintColor = isDark ? '#8E8E93' : '#8E8E93';
+  const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';
+  const borderColor = isDark ? '#2C2C2E' : '#E5E5EA';
 
   if (isLoading) {
-    // Afișează un ecran centrat cu spinner în timpul încărcării
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={themeColors.tint} />
+        <ActivityIndicator size="large" color={activeTintColor} />
       </View>
     );
   }
@@ -28,17 +31,33 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: themeColors.tint,
+        tabBarActiveTintColor: activeTintColor,
+        tabBarInactiveTintColor: inactiveTintColor,
         headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: backgroundColor,
+          borderTopColor: borderColor,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 88 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+          title: 'Acasă',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons
+              name={focused ? 'home' : 'home'}
+              size={28}
+              color={color}
+            />
           ),
         }}
       />
@@ -46,8 +65,12 @@ export default function TabLayout() {
         name="istoric"
         options={{
           title: 'Istoric',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="list.bullet" color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons
+              name={focused ? 'history' : 'history'}
+              size={28}
+              color={color}
+            />
           ),
         }}
       />
@@ -55,8 +78,12 @@ export default function TabLayout() {
         name="adauga"
         options={{
           title: 'Adaugă',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={34} name="plus.circle.fill" color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons
+              name={focused ? 'add-circle' : 'add-circle-outline'}
+              size={32}
+              color={color}
+            />
           ),
         }}
       />
@@ -64,8 +91,12 @@ export default function TabLayout() {
         name="profil"
         options={{
           title: 'Profil',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.fill" color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons
+              name={focused ? 'person' : 'person-outline'}
+              size={28}
+              color={color}
+            />
           ),
         }}
       />

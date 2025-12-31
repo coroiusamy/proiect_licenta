@@ -1,290 +1,427 @@
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
+  View,
+  Text,
+  ScrollView,
   TouchableOpacity,
   TextInput,
-  Button,
-  Platform,
   useColorScheme,
-  Alert,
-  ScrollView,
+  ActivityIndicator,
+  Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
-type AnalysisType = {
-  id: number;
-  name: string;
-  unit: string;
-};
 
 export default function AddAnalysisScreen() {
   const { token } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [analysisTypes, setAnalysisTypes] = useState<AnalysisType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Form State
-  const [selectedTypeId, setSelectedTypeId] = useState<number | undefined>();
-  const [date, setDate] = useState(new Date());
-  const [value, setValue] = useState('');
-  const [stringValue, setStringValue] = useState('');
-  const [notes, setNotes] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [analysisTypes, setAnalysisTypes] = useState<any[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  const [selectedType, setSelectedType] = useState('');
+  const [value, setValue] = useState('');
+  const [stringValue, setStringValue] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [notes, setNotes] = useState('');
+
+  const containerBg = isDark ? '#000000' : '#F8F9FA';
+  const textColor = isDark ? '#FFFFFF' : '#000000';
+  const inputBg = isDark ? '#1C1C1E' : '#FFFFFF';
+  const placeholderColor = isDark ? '#8E8E93' : '#8E8E93';
+
   useEffect(() => {
-    const fetchAnalysisTypes = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/api/analyses/types`);
-        setAnalysisTypes(response.data);
-      } catch (error) {
-        Toast.show({
-          type: 'error',
-          text1: 'Eroare',
-          text2: 'Nu s-au putut încărca tipurile de analize.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchAnalysisTypes();
   }, []);
 
-  const handleSave = async () => {
-    if (!selectedTypeId) {
-      Alert.alert('Atenție', 'Te rugăm să selectezi un tip de analiză.');
-      return;
-    }
-    if (!value && !stringValue) {
-      Alert.alert(
-        'Atenție',
-        'Te rugăm să introduci o valoare (numerică sau text).'
-      );
-      return;
-    }
-
+  const fetchAnalysisTypes = async () => {
     try {
-      await axios.post(
-        `${API_URL}/api/analyses`,
-        {
-          analysisTypeId: selectedTypeId,
-          date: date.toISOString(),
-          value: value || null,
-          stringValue: stringValue || null,
-          notes: notes || null,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await axios.get(`${API_URL}/api/analyses/types`);
 
-      Toast.show({
-        type: 'success',
-        text1: 'Succes',
-        text2: 'Analiza a fost salvată!',
-      });
-      router.back();
-    } catch (error) {
+      if (response.data && response.data.length > 0) {
+        setAnalysisTypes(response.data);
+        setSelectedType(response.data[0].id.toString());
+      }
+    } catch (error: any) {
+      console.error('Error fetching analysis types:', error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',
-        text2: 'Salvarea a eșuat.',
+        text2: 'Nu s-au putut încărca tipurile de analize.',
       });
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') setShowDatePicker(false);
-    if (selectedDate) setDate(selectedDate);
+  const getSelectedTypeInfo = () => {
+    return analysisTypes.find((t) => t.id.toString() === selectedType);
   };
 
-  // Dynamic Styles helpers
-  const textColor = isDark ? '#FFFFFF' : '#000000';
-  const inputBorderColor = isDark ? '#444' : '#CCC';
-  const placeholderColor = isDark ? '#888' : '#666';
+  const handleSubmit = async () => {
+    const typeInfo = getSelectedTypeInfo();
+    if (!typeInfo) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Selectează un tip de analiză.',
+      });
+      return;
+    }
 
-  if (isLoading) {
-    return (
-      <ThemedView style={[styles.container, styles.centerContent]}>
-        <ThemedText>Se încarcă...</ThemedText>
-      </ThemedView>
-    );
-  }
+    // Validate
+    const isNumeric = typeInfo.unit && typeInfo.unit.length > 0;
+
+    if (isNumeric && !value) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Introdu o valoare.',
+      });
+      return;
+    }
+
+    if (!isNumeric && !stringValue) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Introdu o valoare.',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const payload = {
+        analysisTypeId: parseInt(selectedType),
+        date: date.toISOString(),
+        value: isNumeric ? parseFloat(value) : null,
+        stringValue: !isNumeric ? stringValue : null,
+        notes: notes || null,
+      };
+
+      await axios.post(`${API_URL}/api/analyses`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Salvată!',
+        text2: 'Analiza a fost adăugată.',
+      });
+
+      setValue('');
+      setStringValue('');
+      setNotes('');
+      setDate(new Date());
+
+      setTimeout(() => {
+        router.back();
+      }, 1000);
+    } catch (error: any) {
+      console.error('Error submitting:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: error.response?.data?.message || 'Nu s-a putut salva.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const typeInfo = getSelectedTypeInfo();
+  const isNumeric = typeInfo?.unit && typeInfo.unit.length > 0;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: containerBg }]}
+      edges={['top']}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        <ThemedText style={styles.title}>Adaugă Analiză Nouă</ThemedText>
-
-        <ThemedText style={styles.label}>Tipul Analizei</ThemedText>
-        <ThemedView
-          style={[styles.pickerContainer, { borderColor: inputBorderColor }]}
+        <ScrollView
+          style={[styles.container, { backgroundColor: containerBg }]}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Picker
-            selectedValue={selectedTypeId}
-            onValueChange={setSelectedTypeId}
-            dropdownIconColor={textColor}
-            style={{ color: textColor }}
-          >
-            <Picker.Item
-              label="-- Selectează --"
-              value={undefined}
-              color={textColor}
-            />
-            {analysisTypes.map((type) => (
-              <Picker.Item
-                key={type.id}
-                label={type.name}
-                value={type.id}
-                color={textColor}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <MaterialIcons name="close" size={24} color={textColor} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.headerTitle, { color: textColor }]}>
+                Adaugă Analiză
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: textColor }]}>
+                Completează datele
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.form}>
+            {/* TYPE */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.label, { color: textColor }]}>
+                Tip Analiză *
+              </Text>
+              {analysisTypes.length === 0 ? (
+                <View style={[styles.emptyState, { backgroundColor: inputBg }]}>
+                  <ActivityIndicator color="#007AFF" />
+                  <Text style={[styles.emptyText, { color: textColor }]}>
+                    Se încarcă...
+                  </Text>
+                </View>
+              ) : (
+                <View
+                  style={[styles.pickerContainer, { backgroundColor: inputBg }]}
+                >
+                  <Picker
+                    selectedValue={selectedType}
+                    onValueChange={setSelectedType}
+                    style={[styles.picker, { color: textColor }]}
+                    dropdownIconColor={textColor}
+                  >
+                    {analysisTypes.map((type) => (
+                      <Picker.Item
+                        key={type.id}
+                        label={`${type.name}${
+                          type.unit ? ` (${type.unit})` : ''
+                        }`}
+                        value={type.id.toString()}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              )}
+            </View>
+
+            {/* VALUE */}
+            {typeInfo && (
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { color: textColor }]}>
+                  Valoare *
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: inputBg,
+                      color: textColor,
+                      borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
+                    },
+                  ]}
+                  value={isNumeric ? value : stringValue}
+                  onChangeText={isNumeric ? setValue : setStringValue}
+                  placeholder={
+                    isNumeric
+                      ? `Ex: 62${typeInfo.unit ? ` ${typeInfo.unit}` : ''}`
+                      : 'Introdu valoare'
+                  }
+                  placeholderTextColor={placeholderColor}
+                  keyboardType={isNumeric ? 'decimal-pad' : 'default'}
+                />
+                {typeInfo.refMin && typeInfo.refMax && (
+                  <Text style={styles.hint}>
+                    Normal: {typeInfo.refMin} - {typeInfo.refMax}{' '}
+                    {typeInfo.unit}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* DATE */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.label, { color: textColor }]}>Data *</Text>
+              <TouchableOpacity
+                style={[
+                  styles.dateButton,
+                  {
+                    backgroundColor: inputBg,
+                    borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
+                  },
+                ]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={[styles.dateText, { color: textColor }]}>
+                  {date.toLocaleDateString('ro-RO', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+                <MaterialIcons
+                  name="calendar-today"
+                  size={20}
+                  color={textColor}
+                />
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === 'ios');
+                    if (selectedDate) setDate(selectedDate);
+                  }}
+                  maximumDate={new Date()}
+                />
+              )}
+            </View>
+
+            {/* NOTES */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.label, { color: textColor }]}>
+                Notițe (opțional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.textArea,
+                  {
+                    backgroundColor: inputBg,
+                    color: textColor,
+                    borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
+                  },
+                ]}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Adaugă notițe..."
+                placeholderTextColor={placeholderColor}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
               />
-            ))}
-          </Picker>
-        </ThemedView>
+            </View>
+          </View>
+        </ScrollView>
 
-        <ThemedText style={styles.label}>Data Rezultatului</ThemedText>
-        <ThemedView style={styles.dateContainer}>
-          {Platform.OS === 'android' && (
-            <Button
-              onPress={() => setShowDatePicker(true)}
-              title={date.toLocaleDateString()}
-              color="#007AFF"
-            />
-          )}
-          {(showDatePicker || Platform.OS === 'ios') && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display="default"
-              onChange={onDateChange}
-              themeVariant={colorScheme ?? 'light'}
-            />
-          )}
-        </ThemedView>
-
-        <ThemedText style={styles.label}>Valoare Numerică</ThemedText>
-        <TextInput
+        <View
           style={[
-            styles.input,
-            { color: textColor, borderColor: inputBorderColor },
+            styles.footer,
+            {
+              backgroundColor: containerBg,
+              borderTopColor: isDark ? '#2C2C2E' : '#E5E5EA',
+            },
           ]}
-          placeholder="Ex: 95.5"
-          value={value}
-          onChangeText={setValue}
-          keyboardType="numeric"
-          placeholderTextColor={placeholderColor}
-        />
-
-        <ThemedText style={styles.label}>Valoare Text</ThemedText>
-        <TextInput
-          style={[
-            styles.input,
-            { color: textColor, borderColor: inputBorderColor },
-          ]}
-          placeholder="Ex: Pozitiv / Negativ"
-          value={stringValue}
-          onChangeText={setStringValue}
-          placeholderTextColor={placeholderColor}
-        />
-
-        <ThemedText style={styles.label}>Notițe (Opțional)</ThemedText>
-        <TextInput
-          style={[
-            styles.input,
-            styles.notesInput,
-            { color: textColor, borderColor: inputBorderColor },
-          ]}
-          placeholder="Detalii suplimentare..."
-          value={notes}
-          onChangeText={setNotes}
-          placeholderTextColor={placeholderColor}
-          multiline
-        />
-
-        <TouchableOpacity style={styles.buttonContainer} onPress={handleSave}>
-          <ThemedText style={styles.buttonText}>Salvează</ThemedText>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        >
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              (isLoading || analysisTypes.length === 0) && { opacity: 0.6 },
+            ]}
+            onPress={handleSubmit}
+            disabled={isLoading || analysisTypes.length === 0}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <MaterialIcons name="check" size={24} color="#FFFFFF" />
+                <Text style={styles.submitText}>Salvează</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  centerContent: {
-    justifyContent: 'center',
+  safeArea: { flex: 1 },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: 20 },
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 15,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 25,
-    marginTop: 10,
-  },
-  label: {
+  backButton: { marginRight: 15, padding: 5 },
+  headerTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 2 },
+  headerSubtitle: { fontSize: 14, opacity: 0.7 },
+  form: { paddingHorizontal: 20 },
+  formGroup: { marginBottom: 20 },
+  label: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     fontSize: 16,
-    fontWeight: '600',
-    marginTop: 15,
-    marginBottom: 8,
+  },
+  textArea: {
+    minHeight: 100,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    fontSize: 16,
   },
   pickerContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderRadius: 8,
-    overflow: 'hidden', // Important pentru colțuri rotunjite la Picker
+    borderColor: '#E5E5EA',
   },
-  dateContainer: {
-    alignItems: Platform.OS === 'ios' ? 'flex-start' : 'stretch',
-  },
-  input: {
-    height: 48,
+  picker: { height: 50 },
+  dateButton: {
+    height: 50,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    fontSize: 16,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  notesInput: {
-    height: 100,
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  buttonContainer: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
+  dateText: { fontSize: 16 },
+  hint: { fontSize: 13, color: '#8E8E93', marginTop: 6 },
+  emptyState: {
+    padding: 20,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 35,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
-  buttonText: {
+  emptyText: { fontSize: 14, marginTop: 8 },
+  footer: { padding: 20, borderTopWidth: 1 },
+  submitButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  submitText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });

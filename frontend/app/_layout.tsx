@@ -8,8 +8,8 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { AuthProvider } from '@/context/AuthContext';
-
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { toastConfig } from '../config/toastConfig';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -26,18 +26,13 @@ export default function RootLayout() {
         >
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-
-            <Stack.Screen
-              name="modal"
-              options={{ presentation: 'modal', title: 'Modal' }}
-            />
-
             <Stack.Screen
               name="login"
-              options={{
-                title: 'Autentificare',
-                presentation: 'modal',
-              }}
+              options={{ title: 'Autentificare', presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="register"
+              options={{ title: 'Înregistrare', presentation: 'modal' }}
             />
             <Stack.Screen
               name="forgot-password"
@@ -45,40 +40,27 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="reset-password"
-              options={{ title: 'Confirmare Parolă', presentation: 'card' }}
-            />
-            <Stack.Screen
-              name="register"
-              options={{
-                title: 'Înregistrare',
-                presentation: 'modal',
-              }}
+              options={{ title: 'Confirmare', presentation: 'card' }}
             />
             <Stack.Screen
               name="add-analysis"
-              options={{
-                title: 'Adaugă Analiză',
-                presentation: 'modal',
-              }}
+              options={{ title: 'Adaugă', presentation: 'modal' }}
             />
             <Stack.Screen
-              name="istoric-detaliu"
-              options={{
-                title: 'Detalii Analize',
-                presentation: 'modal',
-              }}
+              name="buletin-detaliu"
+              options={{ headerShown: false, presentation: 'card' }}
             />
             <Stack.Screen
-              name="chart-detail"
-              options={{
-                title: 'Grafic',
-              }}
+              name="analiza-detaliu"
+              options={{ headerShown: false, presentation: 'modal' }}
             />
+
+            <Stack.Screen name="chart-detaliu" options={{ title: 'Grafic' }} />
           </Stack>
+          <Toast config={toastConfig} />
           <StatusBar style="auto" />
         </ThemeProvider>
       </AuthProvider>
-      <Toast />
     </>
   );
 }
