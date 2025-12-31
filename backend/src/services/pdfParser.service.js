@@ -2,12 +2,15 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Normalize text for better matching
+// Normalize text for better matching (OCR-friendly)
 const normalizeText = (text) => {
   return text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/[oO0]/g, 'o') // Normalizează O și 0
+    .replace(/[iI1l|]/g, 'i') // Normalizează i, I, 1, l, |
     .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+    .replace(/[^\w\s{}()\-]/g, '') // Remove special chars except {}()-
     .toLowerCase()
     .trim();
 };
@@ -29,25 +32,21 @@ const extractValueAfterName = (textBlock, analysisName, startIndex) => {
     // Look for numbers in the text
     const searchArea = textBlock.substring(startIndex, startIndex + 400);
 
-    // Split into lines
+    // Split into lines - don't filter empty lines yet
     const rawLines = searchArea.split('\n');
     const lines = rawLines.map((l) => l.trim());
 
-    // DEBUG
+    // DEBUG: Show what lines we're analyzing
     const shouldDebug =
       analysisName.includes('Bilirubina directa') ||
       analysisName.includes('Fier seric') ||
+      analysisName.includes('Feritina') ||
       analysisName.includes('HEM}') ||
       analysisName.includes('CHEM}') ||
       analysisName.includes('RET-He') ||
       analysisName.includes('reticulocitare') ||
       analysisName.includes('anti-transglutaminaza') ||
-      analysisName.includes('transglutaminază') ||
-      analysisName.includes('CRP') ||
-      analysisName.includes('Proteina C') ||
-      analysisName.includes('ALT') ||
-      analysisName.includes('AST') ||
-      analysisName.includes('GGT');
+      analysisName.includes('transglutaminază');
 
     if (shouldDebug) {
       console.log(`  [DEBUG] Raw lines after "${analysisName}":`);
@@ -55,6 +54,12 @@ const extractValueAfterName = (textBlock, analysisName, startIndex) => {
         console.log(`    ${idx}: "${line}" (length: ${line.length})`);
       });
     }
+
+    // Synevo format is typically:
+    // Line 0: (empty or rest of analysis name)
+    // Line 1-3: "LT" or method info
+    // Line 4-5: VALUE on one line
+    // Line 6: UNIT and REFERENCE on same or next line
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -64,23 +69,27 @@ const extractValueAfterName = (textBlock, analysisName, startIndex) => {
 
       // Skip lines that are clearly metadata
       if (line.toLowerCase().includes('metoda')) continue;
-      if (line.match(/^(LT|LC)\s*$/)) continue;
+      if (line.match(/^(LT|LC)\s*$/)) continue; // Lab code
       if (line === '*') continue;
       if (line.toLowerCase().includes('ser /')) continue;
       if (line.toLowerCase().includes('sange')) continue;
       if (line.toLowerCase().includes('urina')) continue;
-      if (line.match(/\d{2}\/\d{2}\/\d{4}/)) continue;
+      if (line.match(/\d{2}\/\d{2}\/\d{4}/)) continue; // Dates
       if (line.toLowerCase().includes('pagina')) continue;
-      if (line.match(/^\d{4}\s+\d{3}\s+\d{3}$/)) continue;
+      if (line.match(/^\d{4}\s+\d{3}\s+\d{3}$/)) continue; // Phone numbers like "0256 200 039"
 
-      // Look for numbers in line
+      // Look for a line with numbers
+      // IMPROVED: Also match numbers that might be stuck to text like "pg/cell27"
       const valueRegex = /(\d+(?:[.,]\d+)?)/g;
       const numbersInLine = [];
       let match;
 
       while ((match = valueRegex.exec(line)) !== null) {
         const value = parseFloat(match[1].replace(',', '.'));
-        if (value >= 1900 && value <= 2100) continue; // Skip years
+
+        // Skip years
+        if (value >= 1900 && value <= 2100) continue;
+
         numbersInLine.push({
           value: value,
           position: match.index,
@@ -90,6 +99,7 @@ const extractValueAfterName = (textBlock, analysisName, startIndex) => {
 
       if (numbersInLine.length === 0) continue;
 
+      // DEBUG
       if (shouldDebug) {
         console.log(`  [DEBUG] Line ${i} with numbers: "${line}"`);
         console.log(
@@ -98,11 +108,13 @@ const extractValueAfterName = (textBlock, analysisName, startIndex) => {
         );
       }
 
-      // Check if line contains a range
+      // Check if line contains a range (dash between two numbers)
+      // IMPROVED: Handle ranges with no spaces like "27-32" or "pg/cell27 - 32"
       const hasRange = line.match(/(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)/);
 
-      // IMPROVED: If line has range with 3+ numbers, first number is likely patient value
+      // FIXED: Better detection of value vs reference range
       if (hasRange && numbersInLine.length >= 3) {
+        // Extract the two numbers that form the range
         const rangeMatch = line.match(
           /(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)/
         );
@@ -110,6 +122,7 @@ const extractValueAfterName = (textBlock, analysisName, startIndex) => {
           const rangeMin = parseFloat(rangeMatch[1].replace(',', '.'));
           const rangeMax = parseFloat(rangeMatch[2].replace(',', '.'));
 
+          // Find which number in our list is NOT part of the range
           const valueNumber = numbersInLine.find(
             (n) =>
               Math.abs(n.value - rangeMin) > 0.01 &&
@@ -119,109 +132,99 @@ const extractValueAfterName = (textBlock, analysisName, startIndex) => {
           if (valueNumber) {
             if (shouldDebug) {
               console.log(
-                `  [DEBUG] Found value separate from range: ${valueNumber.value}`
+                `  [DEBUG] Found value separate from range (${rangeMin}-${rangeMax}): ${valueNumber.value}`
               );
             }
             return valueNumber.value;
           }
         }
 
+        // Fallback: return first number
         if (shouldDebug) {
           console.log(
-            `  [DEBUG] Returning first number: ${numbersInLine[0].value}`
+            `  [DEBUG] Detected range with 3+ numbers, returning first: ${numbersInLine[0].value}`
           );
         }
         return numbersInLine[0].value;
       }
 
-      // If line is just reference range (2 numbers with dash), skip
+      // Check if this line is just the reference range (2 numbers with dash)
       if (numbersInLine.length === 2 && hasRange) {
+        // This is just "MIN - MAX", skip to next line
         if (shouldDebug) {
-          console.log(`  [DEBUG] Just reference range, skipping...`);
+          console.log(
+            `  [DEBUG] This is just reference range (2 numbers with dash), skipping...`
+          );
         }
         continue;
       }
 
-      // CRITICAL FIX: Lines with operators AND units are reference ranges
-      // Pattern: "< 50 U/L" or "< 0.5 mg/dL" = reference
-      // Pattern: "< 0.3" (no unit) = patient value
-      const hasOperator = line.match(/([<>≤≥])\s*(\d+(?:[.,]\d+)?)/);
-      const hasUnit = line.match(/(mg|g|U|µg|μg|mL|dL|fL|pg|%|mii|mil)/i);
-
+      // Single number or number with operator
       if (numbersInLine.length === 1) {
-        if (hasOperator) {
-          const operatorValue = parseFloat(hasOperator[2].replace(',', '.'));
-
-          // If it has a unit, it's a REFERENCE value, skip to next line for patient value
-          if (hasUnit) {
-            if (shouldDebug) {
-              console.log(
-                `  [DEBUG] Operator + unit = reference range, checking next lines...`
-              );
-            }
-
-            // Look for patient value in next lines
-            for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-              const nextLine = lines[j];
-              if (nextLine.length === 0) continue;
-
-              // Skip lines with units (those are also reference values)
-              if (
-                nextLine.match(
-                  /(mg|g|U|µg|μg|mL|dL|fL|pg|%|mii|mil)\/|Negativ|Pozitiv/i
-                )
-              ) {
-                continue;
-              }
-
-              const nextLineNumbers = [];
-              const nextRegex = /(\d+(?:[.,]\d+)?)/g;
-              let nextMatch;
-              while ((nextMatch = nextRegex.exec(nextLine)) !== null) {
-                const val = parseFloat(nextMatch[1].replace(',', '.'));
-                if (val < 1900 || val > 2100) {
-                  nextLineNumbers.push(val);
-                }
-              }
-
-              if (nextLineNumbers.length > 0) {
-                if (shouldDebug) {
-                  console.log(
-                    `  [DEBUG] Found patient value on next line: ${nextLineNumbers[0]}`
-                  );
-                }
-                return nextLineNumbers[0];
-              }
-            }
-
-            // No patient value found in next lines, skip this entirely
-            if (shouldDebug) {
-              console.log(`  [DEBUG] No patient value found, skipping...`);
-            }
-            continue;
-          } else {
-            // Operator but NO unit = this IS the patient value
-            if (shouldDebug) {
-              console.log(
-                `  [DEBUG] Operator without unit = patient value: ${operatorValue}`
-              );
-            }
-            return operatorValue;
+        // Check if it has an operator like ≤, <, >, ≥
+        if (line.match(/[<>≤≥]/)) {
+          // This might be a reference value like "≤ 0.3" or "<20 Negativ"
+          // Check the NEXT line for the actual value
+          if (shouldDebug) {
+            console.log(
+              `  [DEBUG] Found operator, might be reference. Checking next line...`
+            );
           }
+
+          // Look at next non-empty lines for the actual value
+          for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+            const nextLine = lines[j];
+            if (nextLine.length === 0) continue;
+
+            // Skip lines that also have comparison operators (they're also reference values)
+            if (nextLine.match(/[<>≤≥]/)) continue;
+
+            // Skip lines with "Negativ" or "Pozitiv" (test result indicators, not values)
+            if (nextLine.match(/negativ|pozitiv/i)) continue;
+
+            const nextLineNumbers = [];
+            const nextRegex = /(\d+(?:[.,]\d+)?)/g;
+            let nextMatch;
+            while ((nextMatch = nextRegex.exec(nextLine)) !== null) {
+              const val = parseFloat(nextMatch[1].replace(',', '.'));
+              if (val < 1900 || val > 2100) {
+                nextLineNumbers.push(val);
+              }
+            }
+
+            if (nextLineNumbers.length > 0) {
+              if (shouldDebug) {
+                console.log(
+                  `  [DEBUG] Found number on next line: ${nextLineNumbers[0]}`
+                );
+              }
+              return nextLineNumbers[0];
+            }
+          }
+
+          // If we found an operator but no valid number in next lines, skip this line entirely
+          if (shouldDebug) {
+            console.log(
+              `  [DEBUG] Found operator but no valid value in next lines, skipping...`
+            );
+          }
+          continue;
         }
 
-        // Single number, no operator
+        // Single standalone number (no operator) - this is likely the patient value
         if (shouldDebug) {
-          console.log(`  [DEBUG] Single number: ${numbersInLine[0].value}`);
+          console.log(
+            `  [DEBUG] Single number, returning: ${numbersInLine[0].value}`
+          );
         }
         return numbersInLine[0].value;
       }
 
-      // Multiple numbers without range
+      // Multiple numbers without range - return first one
       if (numbersInLine.length > 1 && !hasRange) {
         if (shouldDebug) {
           console.log(
-            `  [DEBUG] Multiple numbers, returning first: ${numbersInLine[0].value}`
+            `  [DEBUG] Multiple numbers without range (${numbersInLine.length}), returning first: ${numbersInLine[0].value}`
           );
         }
         return numbersInLine[0].value;
@@ -259,15 +262,17 @@ const extractTextValueAfterName = (textBlock, analysisName, startIndex) => {
 // Parse analysis blocks
 const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
   const results = [];
-  const foundAnalyses = new Set();
+  const foundAnalyses = new Set(); // Track what we've already found
 
+  // Split into lines
   const lines = block.split('\n').filter((line) => line.trim().length > 0);
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const normalizedLine = normalizeText(line);
 
-    // Skip test description headers
+    // Skip lines that are test description headers (contain multiple test names)
+    // These usually have patterns like "Hemograma cu form. leucocitara, Hb,Ht,indici si reticulocite"
     if (
       normalizedLine.includes('hemograma') ||
       normalizedLine.includes('cu form') ||
@@ -280,11 +285,13 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
     for (const analysisType of knownTypes) {
       const normalizedTypeName = normalizeText(analysisType.name);
 
+      // Special handling for multi-line names like "Echivalent al hemoglobinei reticulocitare (RET-He)"
+      // which appears in PDF as two lines
       let matchIndex = -1;
       let usedShortName = false;
 
-      // Try matching without parentheses for names with parentheses
-      if (analysisType.name.includes('(') && analysisType.name.includes(')')) {
+      if (analysisType.name.includes('RET-He')) {
+        // Try matching without the parenthetical part first
         const nameWithoutParens = analysisType.name
           .replace(/\s*\([^)]+\)\s*$/, '')
           .trim();
@@ -292,6 +299,9 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
         matchIndex = normalizedLine.indexOf(normalizedWithoutParens);
 
         if (matchIndex !== -1) {
+          console.log(
+            `  [RET-He] Matched without parentheses: "${nameWithoutParens}"`
+          );
           usedShortName = true;
         }
       }
@@ -301,10 +311,12 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
         matchIndex = normalizedLine.indexOf(normalizedTypeName);
       }
 
+      // Check if line contains the analysis name
       if (matchIndex !== -1) {
-        // Verify whole word match
+        // Verify it's a whole word match (not part of another word)
+        // This prevents "INR" matching in "Inregistrat"
         const nameToCheck =
-          usedShortName && analysisType.name.includes('(')
+          usedShortName && analysisType.name.includes('RET-He')
             ? normalizeText(
                 analysisType.name.replace(/\s*\([^)]+\)\s*$/, '').trim()
               )
@@ -314,18 +326,29 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
           continue;
         }
 
-        // Skip partial matches (single word that's not the complete name)
+        // Skip lines that are ONLY a single word (like just "reticulocite") with nothing else
+        // BUT only if it's NOT the complete analysis name
+        // This filters headers like "reticulocite" that appear in test descriptions
+        // while keeping valid single-word analyses like "Neutrofil", "Limfocit", etc.
         const trimmedLine = line.trim();
         const normalizedTrimmedLine = normalizeText(trimmedLine);
 
+        // Check if this line is ONLY a partial match (not the full analysis name)
         if (
           normalizedTrimmedLine !== normalizedTypeName &&
           normalizedTrimmedLine.split(/\s+/).length === 1
         ) {
+          // Line is a single word but not the complete analysis name - skip it
+          console.log(
+            `  [SKIP] Line is partial match, not complete name: "${trimmedLine}"`
+          );
           continue;
         }
 
-        // Skip lowercase versions (headers)
+        // Additional check: Skip lines that are lowercase versions of the analysis name
+        // These are typically from headers/descriptions, not actual results
+        // Real analysis names in Synevo reports start with capital letters
+        // EXCEPTION: Skip this check for names starting with * or special characters
         if (
           trimmedLine.length > 0 &&
           !trimmedLine.startsWith('*') &&
@@ -334,31 +357,16 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
           trimmedLine[0] === trimmedLine[0].toLowerCase() &&
           normalizedTrimmedLine === normalizedTypeName
         ) {
-          console.log(`  [SKIP] Lowercase header: "${trimmedLine}"`);
-          continue;
-        }
-
-        // IMPORTANT: Skip matches in narrative/comment sections
-        // These are descriptive text, not actual test results
-        const previousLine = i > 0 ? lines[i - 1].trim().toLowerCase() : '';
-        const isInNarrativeSection =
-          previousLine.includes('comentariu') ||
-          previousLine.includes('seria') ||
-          previousLine.includes('aspect') ||
-          line.toLowerCase().includes('seria') ||
-          line.toLowerCase().includes('aspect normal') ||
-          line.toLowerCase().includes('prezente hematii') ||
-          line.toLowerCase().includes('colorat');
-
-        if (isInNarrativeSection) {
           console.log(
-            `  [SKIP] In narrative section: "${line.substring(0, 60)}"`
+            `  [SKIP] Line is lowercase version (header): "${trimmedLine}"`
           );
           continue;
         }
 
+        // Create unique key to avoid duplicates
         const uniqueKey = `${analysisType.id}-${i}`;
 
+        // Skip if we've already processed this analysis on this line
         if (foundAnalyses.has(uniqueKey)) {
           continue;
         }
@@ -369,6 +377,41 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
           }" in line: "${line.substring(0, 80)}..."`
         );
 
+        // Extra debug for Reticulocite to find false matches
+        if (analysisType.name === 'Reticulocite') {
+          console.log(`  [Reticulocite DEBUG] Full line: "${line}"`);
+        }
+
+        // Look for value in current line and next 5-6 lines (Synevo format has values far below)
+        const searchText = lines
+          .slice(i, Math.min(i + 7, lines.length))
+          .join('\n');
+
+        // SPECIAL DEBUG for HEM and RET-He
+        const shouldDebugAnalysis =
+          analysisType.name.includes('HEM}') ||
+          analysisType.name.includes('CHEM}') ||
+          analysisType.name.includes('RET-He') ||
+          analysisType.name.includes('reticulocitare');
+
+        if (shouldDebugAnalysis) {
+          console.log(`  [${analysisType.name} DEBUG] Full line: "${line}"`);
+          console.log(
+            `  [${
+              analysisType.name
+            } DEBUG] Search text (first 300 chars): "${searchText.substring(
+              0,
+              300
+            )}"`
+          );
+        }
+
+        // Find the analysis name in the original line
+        // Since we matched using normalized text, we need to find where it actually is in the original line
+        // The issue is that the line might have extra spaces, so indexOf won't work
+        // Instead, we'll search for the normalized version and calculate the position
+
+        // For RET-He, use the short name without parentheses
         const nameForExtraction = usedShortName
           ? analysisType.name.replace(/\s*\([^)]+\)\s*$/, '').trim()
           : analysisType.name;
@@ -379,10 +422,38 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
           normalizedAnalysisName
         );
 
+        if (shouldDebugAnalysis) {
+          console.log(
+            `  [${analysisType.name} DEBUG] normalizedIndex: ${normalizedIndex}`
+          );
+          console.log(
+            `  [${analysisType.name} DEBUG] nameForExtraction: "${nameForExtraction}"`
+          );
+          console.log(
+            `  [${analysisType.name} DEBUG] analysisType.name: "${analysisType.name}"`
+          );
+          console.log(`  [${analysisType.name} DEBUG] line: "${line}"`);
+        }
+
         if (normalizedIndex !== -1) {
+          // Since we found it in normalized text, we know it's there
+          // For extraction, we'll just use the whole line after the analysis name
+          // We can approximate by using the normalized match position
+          // Try to extract value from the REST of the current line first
+          // Since spacing might be different, we'll search for the value on the same line
+          // by looking after the analysis name appears
           const restOfLine = line.substring(
             normalizedIndex + nameForExtraction.length
           );
+
+          if (shouldDebugAnalysis) {
+            console.log(
+              `  [${analysisType.name} DEBUG] Rest of line: "${restOfLine}"`
+            );
+            console.log(
+              `  [${analysisType.name} DEBUG] Calling extractValueAfterName on rest of line...`
+            );
+          }
 
           let numericValue = extractValueAfterName(
             restOfLine,
@@ -390,19 +461,43 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
             0
           );
 
+          if (shouldDebugAnalysis) {
+            console.log(
+              `  [${analysisType.name} DEBUG] Result from rest of line: ${numericValue}`
+            );
+          }
+
           let stringValue = null;
 
-          // If not found in current line, search next lines
+          // If not found in current line, search in next lines
           if (numericValue === null) {
+            // Search in the combined text of next lines
             const nextLinesText = lines
               .slice(i + 1, Math.min(i + 7, lines.length))
               .join('\n');
+
+            if (shouldDebugAnalysis) {
+              console.log(
+                `  [${analysisType.name} DEBUG] Searching in next lines...`
+              );
+              console.log(
+                `  [${
+                  analysisType.name
+                } DEBUG] Next lines text: "${nextLinesText.substring(0, 200)}"`
+              );
+            }
 
             numericValue = extractValueAfterName(
               nextLinesText,
               analysisType.name,
               0
             );
+
+            if (shouldDebugAnalysis) {
+              console.log(
+                `  [${analysisType.name} DEBUG] Result from next lines: ${numericValue}`
+              );
+            }
           }
 
           // Try text value if no numeric value
@@ -420,7 +515,7 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
           if (numericValue !== null) {
             console.log(`  --> Extracted numeric value: ${numericValue}`);
 
-            // Check for duplicates
+            // Check if we already have this analysis with the same value (avoid duplicates within same section)
             const isDuplicate = results.some(
               (r) =>
                 r.analysisTypeId === analysisType.id && r.value === numericValue
@@ -453,9 +548,12 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
           } else {
             console.log(`  --> Could not extract value`);
           }
+        } else {
+          // Could not find analysis name in line (shouldn't happen since we already matched)
+          console.log(`  --> Could not locate analysis name in line`);
         }
 
-        break;
+        break; // Move to next line after finding first match
       }
     }
   }
@@ -469,27 +567,64 @@ export const parseSynevoPdf = async (textContent, userId) => {
 
   const resultsToSave = [];
 
-  // Extract Analysis Date
+  // --- Step 1: Extract Analysis Date ---
   let analysisDate = null;
-  const dateRegex = /Data recoltarii:[\s\S]*?(\d{2}\/\d{2}\/\d{4})/i;
-  const dateMatch = textContent.match(dateRegex);
 
-  if (dateMatch && dateMatch[1]) {
-    const dateParts = dateMatch[1].split('/');
-    if (dateParts.length === 3) {
-      analysisDate = new Date(
-        `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`
-      );
-      console.log('Parser: Analysis date found:', analysisDate.toISOString());
+  // Încercăm mai multe pattern-uri de dată
+  const datePatterns = [
+    /Data recoltarii:[\s\S]*?(\d{2}\/\d{2}\/\d{4})/i,
+    /Data\s+recoltarii[\s\S]*?(\d{2}\/\d{2}\/\d{4})/i,
+    /recoltarii[\s\S]*?(\d{2}\/\d{2}\/\d{4})/i,
+    /Data[\s\S]*?(\d{2}\/\d{2}\/\d{4})/i,
+    // Pentru OCR - caută orice dată în format dd/mm/yyyy
+    /(\d{2}\/\d{2}\/\d{4})/,
+  ];
+
+  for (const pattern of datePatterns) {
+    const dateMatch = textContent.match(pattern);
+    if (dateMatch && dateMatch[1]) {
+      const dateParts = dateMatch[1].split('/');
+      if (dateParts.length === 3) {
+        const day = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]);
+        const year = parseInt(dateParts[2]);
+
+        // Validare dată
+        if (
+          day >= 1 &&
+          day <= 31 &&
+          month >= 1 &&
+          month <= 12 &&
+          year >= 2000 &&
+          year <= 2030
+        ) {
+          analysisDate = new Date(
+            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(
+              2,
+              '0'
+            )}`
+          );
+          console.log(
+            'Parser: Analysis date found:',
+            analysisDate.toISOString()
+          );
+          break;
+        }
+      }
     }
   }
 
   if (!analysisDate) {
     console.error('Parser: Could not extract analysis date.');
-    throw new Error('Data recoltării nu a putut fi extrasă din PDF.');
+    // În loc să arunci eroare, folosește data curentă ca fallback pentru OCR
+    analysisDate = new Date();
+    console.warn(
+      'Parser: Using current date as fallback for OCR:',
+      analysisDate.toISOString()
+    );
   }
 
-  // Fetch all known analysis types
+  // --- Step 2: Fetch all known analysis types ---
   console.log('--- Fetching known analysis types from database ---');
   const knownTypes = await prisma.analysisType.findMany();
   console.log(`Found ${knownTypes.length} known analysis types in database`);
@@ -499,19 +634,33 @@ export const parseSynevoPdf = async (textContent, userId) => {
     return resultsToSave;
   }
 
+  // Log first few for debugging
   console.log(
     'Sample analysis types:',
     knownTypes.slice(0, 5).map((t) => t.displayName || t.name)
   );
 
-  // Split document into sections
+  // Check if RET-He exists
+  const retHeType = knownTypes.find(
+    (t) =>
+      t.name.includes('RET-He') ||
+      t.name.includes('reticulocitare') ||
+      t.displayName?.includes('RET-He')
+  );
+  if (retHeType) {
+    console.log('Found RET-He in database:', retHeType.name);
+  } else {
+    console.log('WARNING: RET-He NOT found in database!');
+  }
+
+  // --- Step 3: Split document into sections ---
   const sections = textContent.split(
     /(?=Biochimie|Hematologie|Imunologie|Imunochimie|Urina)/
   );
 
   console.log(`--- Document split into ${sections.length} sections ---`);
 
-  // Process each section
+  // --- Step 4: Process each section ---
   for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
     const section = sections[sectionIndex];
     console.log(
@@ -533,7 +682,7 @@ export const parseSynevoPdf = async (textContent, userId) => {
     `\n--- Parsing finished. ${resultsToSave.length} results collected. ---`
   );
 
-  // Log results summary
+  // Log what was found
   if (resultsToSave.length > 0) {
     console.log('Results summary:');
     resultsToSave.forEach((result, idx) => {
@@ -546,6 +695,17 @@ export const parseSynevoPdf = async (textContent, userId) => {
     });
   } else {
     console.warn('WARNING: No results were extracted from the PDF!');
+  }
+
+  // Debug: Show which analysis types from DB were NOT found in the PDF
+  const foundIds = new Set(resultsToSave.map((r) => r.analysisTypeId));
+  const notFound = knownTypes.filter((t) => !foundIds.has(t.id));
+
+  if (notFound.length > 0 && notFound.length < 30) {
+    console.log('\n--- Analysis types in DB but NOT found in PDF ---');
+    notFound.forEach((t) => {
+      console.log(`  - ${t.displayName || t.name}`);
+    });
   }
 
   return resultsToSave;

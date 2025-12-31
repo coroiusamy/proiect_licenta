@@ -16,6 +16,7 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '@/context/AuthContext';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
