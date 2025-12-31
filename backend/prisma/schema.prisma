@@ -14,9 +14,20 @@ model User {
   password  String
   createdAt DateTime @default(now())
 
-  dateOfBirth DateTime? // Data nașterii
-  gender      String?   // Sex 
+  // --- Informații Personale ---
+  firstName   String?  // Prenume
+  lastName    String?  // Nume de familie
+  dateOfBirth DateTime?
+  gender      String?  // "MALE", "FEMALE"
+  
+  // --- Biometrie ---
+  weight      Float?   // Greutate (kg)
+  height      Float?   // Înălțime (cm)
 
+  // --- Câmpuri pentru Resetare Parolă ---
+  resetPasswordToken   String?   @unique // Token-ul unic trimis pe mail
+  resetPasswordExpires DateTime? // Când expiră token-ul (ex: 1 oră)
+  
   // Un user are o listă de rezultate
   analysisResults AnalysisResult[]
 }

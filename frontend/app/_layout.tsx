@@ -40,6 +40,14 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="forgot-password"
+              options={{ title: 'Resetare', presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="reset-password"
+              options={{ title: 'Confirmare Parolă', presentation: 'card' }}
+            />
+            <Stack.Screen
               name="register"
               options={{
                 title: 'Înregistrare',
