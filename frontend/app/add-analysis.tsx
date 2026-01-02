@@ -115,7 +115,7 @@ export default function AddAnalysisScreen() {
         notes: notes || null,
       };
 
-      // LANSEAZĂ REQUEST (NU aștepta răspunsul!)
+      // LANSEAZĂ REQUEST
       axios
         .post(`${API_URL}/api/analyses`, payload, {
           headers: { Authorization: `Bearer ${token}` },
@@ -140,7 +140,7 @@ export default function AddAnalysisScreen() {
           });
         });
 
-      // NAVIGHEAZĂ ÎNAPOI IMEDIAT (nu aștepta!)
+      // NAVIGHEAZĂ ÎNAPOI IMEDIAT
       router.back();
     } catch (error: any) {
       console.error('Error submitting:', error);

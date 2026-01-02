@@ -142,7 +142,6 @@ export default function ChartDetailScreen() {
   const [allData, setAllData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
 
-  // MODIFICARE 1: Setăm default 'all'
   const [selectedPeriod, setSelectedPeriod] = useState('all');
 
   const [stats, setStats] = useState({
@@ -173,7 +172,7 @@ export default function ChartDetailScreen() {
     processDataByPeriod('all', 3650);
   }, [allData]);
 
-  // Funcție Helper pentru conversie sigură "0,6" -> 0.6
+  // Funcție Helper pentru conversie sigură
   const safeParseFloat = (val: any) => {
     if (val === null || val === undefined) return NaN;
     if (typeof val === 'number') return val;

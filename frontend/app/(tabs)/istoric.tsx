@@ -21,10 +21,6 @@ import { useAuth } from '@/context/AuthContext';
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const { width } = Dimensions.get('window');
 
-// ... PĂSTRĂM COMPONENTELE TALE (StatsCard, BulletinCard, EmptyState) ...
-// (Nu le rescriu complet aici ca să nu fie cod duplicat, te rog să le păstrezi pe ale tale, sunt bune)
-
-// --- Copiază StatsCard, BulletinCard, EmptyState aici din codul tău vechi ---
 const StatsCard = ({ icon, label, value, color, isDark }: any) => {
   const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#000000';
@@ -148,7 +144,7 @@ export default function IstoricScreen() {
     thisWeek: 0,
     thisMonth: 0,
     bulletinsCount: 0,
-  }); // Adăugat state pentru statistici
+  });
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
@@ -160,7 +156,7 @@ export default function IstoricScreen() {
       });
       const data = response.data;
 
-      // Calcul Statistici (ca să nu dea eroare că lipsesc)
+      // Calcul Statistici
       const now = new Date();
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -223,7 +219,6 @@ export default function IstoricScreen() {
     fetchAnalyses();
   }, [fetchAnalyses]);
 
-  // --- REPARATIE AICI: Mergem la pagina de BULETIN (Dată), nu analiză ---
   const handleBulletinPress = (bulletin: any) => {
     router.push({
       pathname: '/buletin-detaliu',

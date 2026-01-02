@@ -9,6 +9,7 @@ import {
   useColorScheme,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -138,8 +139,10 @@ export default function ProfilScreen() {
   };
 
   const calculateBMI = () => {
-    const height = parseFloat(userData.height);
-    const weight = parseFloat(userData.weight);
+    const sourceData = isEditing ? editData : userData;
+
+    const height = parseFloat(sourceData.height);
+    const weight = parseFloat(sourceData.weight);
 
     if (height && weight) {
       const heightInMeters = height / 100;
@@ -187,444 +190,452 @@ export default function ProfilScreen() {
       style={[styles.safeArea, { backgroundColor: containerBg }]}
       edges={['top']}
     >
-      <ScrollView
-        style={[styles.container, { backgroundColor: containerBg }]}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.headerTitle, { color: textColor }]}>
-              Profil
+        <ScrollView
+          style={[styles.container, { backgroundColor: containerBg }]}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* HEADER */}
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.headerTitle, { color: textColor }]}>
+                Profil
+              </Text>
+              <Text
+                style={[
+                  styles.headerSubtitle,
+                  { color: textColor, opacity: 0.6 },
+                ]}
+              >
+                Gestionează informațiile tale personale
+              </Text>
+            </View>
+            {!isEditing && (
+              <TouchableOpacity
+                style={styles.editHeaderButton}
+                onPress={() => setIsEditing(true)}
+              >
+                <MaterialIcons name="edit" size={24} color="#007AFF" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* PROFILE AVATAR */}
+          <View style={styles.avatarSection}>
+            <View style={[styles.avatar, { backgroundColor: '#007AFF20' }]}>
+              <Text style={styles.avatarText}>
+                {userData.firstName?.[0]}
+                {userData.lastName?.[0]}
+              </Text>
+            </View>
+            <Text style={[styles.userName, { color: textColor }]}>
+              {userData.firstName} {userData.lastName}
             </Text>
-            <Text
+            <Text style={styles.userEmail}>{userData.email}</Text>
+          </View>
+
+          {/* BMI CARD */}
+          {bmi && bmiInfo && (
+            <View
               style={[
-                styles.headerSubtitle,
-                { color: textColor, opacity: 0.6 },
+                styles.bmiCard,
+                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
               ]}
             >
-              Gestionează informațiile tale personale
-            </Text>
-          </View>
-          {!isEditing && (
-            <TouchableOpacity
-              style={styles.editHeaderButton}
-              onPress={() => setIsEditing(true)}
-            >
-              <MaterialIcons name="edit" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* PROFILE AVATAR */}
-        <View style={styles.avatarSection}>
-          <View style={[styles.avatar, { backgroundColor: '#007AFF20' }]}>
-            <Text style={styles.avatarText}>
-              {userData.firstName?.[0]}
-              {userData.lastName?.[0]}
-            </Text>
-          </View>
-          <Text style={[styles.userName, { color: textColor }]}>
-            {userData.firstName} {userData.lastName}
-          </Text>
-          <Text style={styles.userEmail}>{userData.email}</Text>
-        </View>
-
-        {/* BMI CARD */}
-        {bmi && bmiInfo && (
-          <View
-            style={[
-              styles.bmiCard,
-              { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
-            ]}
-          >
-            <View style={styles.bmiHeader}>
+              <View style={styles.bmiHeader}>
+                <View
+                  style={[
+                    styles.bmiIcon,
+                    { backgroundColor: `${bmiInfo.color}20` },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="monitor-weight"
+                    size={32}
+                    color={bmiInfo.color}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.bmiLabel, { color: textColor }]}>
+                    Indicele de Masă Corporală
+                  </Text>
+                  <Text style={[styles.bmiValue, { color: textColor }]}>
+                    {bmi} <Text style={styles.bmiUnit}>kg/m²</Text>
+                  </Text>
+                </View>
+              </View>
               <View
                 style={[
-                  styles.bmiIcon,
+                  styles.bmiCategory,
                   { backgroundColor: `${bmiInfo.color}20` },
                 ]}
               >
-                <MaterialIcons
-                  name="monitor-weight"
-                  size={32}
-                  color={bmiInfo.color}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.bmiLabel, { color: textColor }]}>
-                  Indicele de Masă Corporală
-                </Text>
-                <Text style={[styles.bmiValue, { color: textColor }]}>
-                  {bmi} <Text style={styles.bmiUnit}>kg/m²</Text>
+                <Text
+                  style={[styles.bmiCategoryText, { color: bmiInfo.color }]}
+                >
+                  {bmiInfo.label}
                 </Text>
               </View>
             </View>
+          )}
+
+          {/* PERSONAL INFO */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="person" size={20} color="#007AFF" />
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
+                Informații Personale
+              </Text>
+            </View>
+
             <View
               style={[
-                styles.bmiCategory,
-                { backgroundColor: `${bmiInfo.color}20` },
+                styles.infoCard,
+                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
               ]}
             >
-              <Text style={[styles.bmiCategoryText, { color: bmiInfo.color }]}>
-                {bmiInfo.label}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* PERSONAL INFO */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="person" size={20} color="#007AFF" />
-            <Text style={[styles.sectionTitle, { color: textColor }]}>
-              Informații Personale
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.infoCard,
-              { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
-            ]}
-          >
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Prenume</Text>
-              {isEditing ? (
-                <TextInput
-                  style={[
-                    styles.infoInput,
-                    { backgroundColor: inputBg, color: textColor },
-                  ]}
-                  value={editData.firstName}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, firstName: text })
-                  }
-                  placeholder="Prenume"
-                  placeholderTextColor={placeholderColor}
-                />
-              ) : (
-                <Text style={[styles.infoValue, { color: textColor }]}>
-                  {userData.firstName}
-                </Text>
-              )}
-            </View>
-
-            <View
-              style={[
-                styles.infoDivider,
-                { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
-              ]}
-            />
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Nume</Text>
-              {isEditing ? (
-                <TextInput
-                  style={[
-                    styles.infoInput,
-                    { backgroundColor: inputBg, color: textColor },
-                  ]}
-                  value={editData.lastName}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, lastName: text })
-                  }
-                  placeholder="Nume"
-                  placeholderTextColor={placeholderColor}
-                />
-              ) : (
-                <Text style={[styles.infoValue, { color: textColor }]}>
-                  {userData.lastName}
-                </Text>
-              )}
-            </View>
-
-            <View
-              style={[
-                styles.infoDivider,
-                { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
-              ]}
-            />
-
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={[styles.infoValue, { color: textColor }]}>
-                {userData.email}
-              </Text>
-            </View>
-
-            {userData.dateOfBirth && (
-              <>
-                <View
-                  style={[
-                    styles.infoDivider,
-                    { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
-                  ]}
-                />
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Data nașterii</Text>
-                  <Text style={[styles.infoValue, { color: textColor }]}>
-                    {userData.dateOfBirth}
-                  </Text>
-                </View>
-              </>
-            )}
-
-            <View
-              style={[
-                styles.infoDivider,
-                { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
-              ]}
-            />
-
-            {/* ✅ IMPROVED: Gender Selector with Buttons */}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Gen</Text>
-              {isEditing ? (
-                <View style={styles.genderSelector}>
-                  <TouchableOpacity
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Prenume</Text>
+                {isEditing ? (
+                  <TextInput
                     style={[
-                      styles.genderButton,
-                      {
-                        backgroundColor:
-                          editData.gender === 'M' ||
-                          editData.gender === 'Masculin'
-                            ? '#007AFF'
-                            : isDark
-                            ? '#2C2C2E'
-                            : '#F2F2F7',
-                      },
+                      styles.infoInput,
+                      { backgroundColor: inputBg, color: textColor },
                     ]}
-                    onPress={() => setEditData({ ...editData, gender: 'M' })}
-                  >
-                    <MaterialIcons
-                      name="male"
-                      size={20}
-                      color={
-                        editData.gender === 'M' ||
-                        editData.gender === 'Masculin'
-                          ? '#FFFFFF'
-                          : '#8E8E93'
-                      }
-                    />
-                    <Text
+                    value={editData.firstName}
+                    onChangeText={(text) =>
+                      setEditData({ ...editData, firstName: text })
+                    }
+                    placeholder="Prenume"
+                    placeholderTextColor={placeholderColor}
+                  />
+                ) : (
+                  <Text style={[styles.infoValue, { color: textColor }]}>
+                    {userData.firstName}
+                  </Text>
+                )}
+              </View>
+
+              <View
+                style={[
+                  styles.infoDivider,
+                  { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                ]}
+              />
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Nume</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[
+                      styles.infoInput,
+                      { backgroundColor: inputBg, color: textColor },
+                    ]}
+                    value={editData.lastName}
+                    onChangeText={(text) =>
+                      setEditData({ ...editData, lastName: text })
+                    }
+                    placeholder="Nume"
+                    placeholderTextColor={placeholderColor}
+                  />
+                ) : (
+                  <Text style={[styles.infoValue, { color: textColor }]}>
+                    {userData.lastName}
+                  </Text>
+                )}
+              </View>
+
+              <View
+                style={[
+                  styles.infoDivider,
+                  { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                ]}
+              />
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={[styles.infoValue, { color: textColor }]}>
+                  {userData.email}
+                </Text>
+              </View>
+
+              {userData.dateOfBirth && (
+                <>
+                  <View
+                    style={[
+                      styles.infoDivider,
+                      { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                    ]}
+                  />
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Data nașterii</Text>
+                    <Text style={[styles.infoValue, { color: textColor }]}>
+                      {userData.dateOfBirth}
+                    </Text>
+                  </View>
+                </>
+              )}
+
+              <View
+                style={[
+                  styles.infoDivider,
+                  { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                ]}
+              />
+
+              {/* Gender Selector */}
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Gen</Text>
+                {isEditing ? (
+                  <View style={styles.genderSelector}>
+                    <TouchableOpacity
                       style={[
-                        styles.genderButtonText,
+                        styles.genderButton,
                         {
-                          color:
+                          backgroundColor:
                             editData.gender === 'M' ||
                             editData.gender === 'Masculin'
-                              ? '#FFFFFF'
-                              : '#8E8E93',
+                              ? '#007AFF'
+                              : isDark
+                              ? '#2C2C2E'
+                              : '#F2F2F7',
                         },
                       ]}
+                      onPress={() => setEditData({ ...editData, gender: 'M' })}
                     >
-                      M
-                    </Text>
-                  </TouchableOpacity>
+                      <MaterialIcons
+                        name="male"
+                        size={20}
+                        color={
+                          editData.gender === 'M' ||
+                          editData.gender === 'Masculin'
+                            ? '#FFFFFF'
+                            : '#8E8E93'
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.genderButtonText,
+                          {
+                            color:
+                              editData.gender === 'M' ||
+                              editData.gender === 'Masculin'
+                                ? '#FFFFFF'
+                                : '#8E8E93',
+                          },
+                        ]}
+                      >
+                        M
+                      </Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[
-                      styles.genderButton,
-                      {
-                        backgroundColor:
+                    <TouchableOpacity
+                      style={[
+                        styles.genderButton,
+                        {
+                          backgroundColor:
+                            editData.gender === 'F' ||
+                            editData.gender === 'Feminin'
+                              ? '#FF2D55'
+                              : isDark
+                              ? '#2C2C2E'
+                              : '#F2F2F7',
+                        },
+                      ]}
+                      onPress={() => setEditData({ ...editData, gender: 'F' })}
+                    >
+                      <MaterialIcons
+                        name="female"
+                        size={20}
+                        color={
                           editData.gender === 'F' ||
                           editData.gender === 'Feminin'
-                            ? '#FF2D55'
-                            : isDark
-                            ? '#2C2C2E'
-                            : '#F2F2F7',
-                      },
-                    ]}
-                    onPress={() => setEditData({ ...editData, gender: 'F' })}
-                  >
+                            ? '#FFFFFF'
+                            : '#8E8E93'
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.genderButtonText,
+                          {
+                            color:
+                              editData.gender === 'F' ||
+                              editData.gender === 'Feminin'
+                                ? '#FFFFFF'
+                                : '#8E8E93',
+                          },
+                        ]}
+                      >
+                        F
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.genderDisplay}>
                     <MaterialIcons
-                      name="female"
-                      size={20}
+                      name={getGenderIcon(userData.gender) as any}
+                      size={18}
                       color={
-                        editData.gender === 'F' || editData.gender === 'Feminin'
-                          ? '#FFFFFF'
+                        userData.gender === 'M' ||
+                        userData.gender === 'Masculin'
+                          ? '#007AFF'
+                          : userData.gender === 'F' ||
+                            userData.gender === 'Feminin'
+                          ? '#FF2D55'
                           : '#8E8E93'
                       }
                     />
                     <Text
                       style={[
-                        styles.genderButtonText,
-                        {
-                          color:
-                            editData.gender === 'F' ||
-                            editData.gender === 'Feminin'
-                              ? '#FFFFFF'
-                              : '#8E8E93',
-                        },
+                        styles.infoValue,
+                        { color: textColor, marginLeft: 6 },
                       ]}
                     >
-                      F
+                      {getGenderDisplay(userData.gender)}
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.genderDisplay}>
-                  <MaterialIcons
-                    name={getGenderIcon(userData.gender) as any}
-                    size={18}
-                    color={
-                      userData.gender === 'M' || userData.gender === 'Masculin'
-                        ? '#007AFF'
-                        : userData.gender === 'F' ||
-                          userData.gender === 'Feminin'
-                        ? '#FF2D55'
-                        : '#8E8E93'
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.infoValue,
-                      { color: textColor, marginLeft: 6 },
-                    ]}
-                  >
-                    {getGenderDisplay(userData.gender)}
-                  </Text>
-                </View>
-              )}
+                  </View>
+                )}
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* HEALTH INFO */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="favorite" size={20} color="#007AFF" />
-            <Text style={[styles.sectionTitle, { color: textColor }]}>
-              Informații Sănătate
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.infoCard,
-              { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
-            ]}
-          >
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Înălțime (cm)</Text>
-              {isEditing ? (
-                <TextInput
-                  style={[
-                    styles.infoInput,
-                    { backgroundColor: inputBg, color: textColor },
-                  ]}
-                  value={editData.height}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, height: text })
-                  }
-                  placeholder="180"
-                  placeholderTextColor={placeholderColor}
-                  keyboardType="decimal-pad"
-                />
-              ) : (
-                <Text style={[styles.infoValue, { color: textColor }]}>
-                  {userData.height ? `${userData.height} cm` : 'Nespecificat'}
-                </Text>
-              )}
+          {/* HEALTH INFO */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="favorite" size={20} color="#007AFF" />
+              <Text style={[styles.sectionTitle, { color: textColor }]}>
+                Informații Sănătate
+              </Text>
             </View>
 
             <View
               style={[
-                styles.infoDivider,
-                { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                styles.infoCard,
+                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
               ]}
-            />
+            >
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Înălțime (cm)</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[
+                      styles.infoInput,
+                      { backgroundColor: inputBg, color: textColor },
+                    ]}
+                    value={editData.height}
+                    onChangeText={(text) =>
+                      setEditData({ ...editData, height: text })
+                    }
+                    placeholder="180"
+                    placeholderTextColor={placeholderColor}
+                    keyboardType="decimal-pad"
+                  />
+                ) : (
+                  <Text style={[styles.infoValue, { color: textColor }]}>
+                    {userData.height ? `${userData.height} cm` : 'Nespecificat'}
+                  </Text>
+                )}
+              </View>
 
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Greutate (kg)</Text>
-              {isEditing ? (
-                <TextInput
-                  style={[
-                    styles.infoInput,
-                    { backgroundColor: inputBg, color: textColor },
-                  ]}
-                  value={editData.weight}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, weight: text })
-                  }
-                  placeholder="75"
-                  placeholderTextColor={placeholderColor}
-                  keyboardType="decimal-pad"
-                />
-              ) : (
-                <Text style={[styles.infoValue, { color: textColor }]}>
-                  {userData.weight ? `${userData.weight} kg` : 'Nespecificat'}
-                </Text>
-              )}
+              <View
+                style={[
+                  styles.infoDivider,
+                  { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                ]}
+              />
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Greutate (kg)</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[
+                      styles.infoInput,
+                      { backgroundColor: inputBg, color: textColor },
+                    ]}
+                    value={editData.weight}
+                    onChangeText={(text) =>
+                      setEditData({ ...editData, weight: text })
+                    }
+                    placeholder="75"
+                    placeholderTextColor={placeholderColor}
+                    keyboardType="decimal-pad"
+                  />
+                ) : (
+                  <Text style={[styles.infoValue, { color: textColor }]}>
+                    {userData.weight ? `${userData.weight} kg` : 'Nespecificat'}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* ACTION BUTTONS */}
-        {isEditing ? (
-          <View style={styles.actionButtons}>
+          {/* ACTION BUTTONS */}
+          {isEditing ? (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.cancelButton,
+                  { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' },
+                ]}
+                onPress={handleCancel}
+                disabled={isSaving}
+              >
+                <Text style={[styles.cancelButtonText, { color: textColor }]}>
+                  Anulează
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.saveButton]}
+                onPress={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Salvează</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
             <TouchableOpacity
               style={[
-                styles.button,
-                styles.cancelButton,
-                { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' },
+                styles.logoutButton,
+                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
               ]}
-              onPress={handleCancel}
-              disabled={isSaving}
+              onPress={handleLogout}
             >
-              <Text style={[styles.cancelButtonText, { color: textColor }]}>
-                Anulează
-              </Text>
+              <MaterialIcons name="logout" size={24} color="#FF3B30" />
+              <Text style={styles.logoutButtonText}>Deconectare</Text>
             </TouchableOpacity>
+          )}
 
-            <TouchableOpacity
-              style={[styles.button, styles.saveButton]}
-              onPress={handleSave}
-              disabled={isSaving}
+          {/* APP INFO */}
+          <View style={styles.appInfo}>
+            <Text
+              style={[styles.appInfoText, { color: textColor, opacity: 0.5 }]}
             >
-              {isSaving ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveButtonText}>Salvează</Text>
-              )}
-            </TouchableOpacity>
+              Aplicație Monitorizare Analize Medicale
+            </Text>
+            <Text
+              style={[styles.appInfoText, { color: textColor, opacity: 0.5 }]}
+            >
+              Versiunea 1.0.0
+            </Text>
           </View>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.logoutButton,
-              { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
-            ]}
-            onPress={handleLogout}
-          >
-            <MaterialIcons name="logout" size={24} color="#FF3B30" />
-            <Text style={styles.logoutButtonText}>Deconectare</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* APP INFO */}
-        <View style={styles.appInfo}>
-          <Text
-            style={[styles.appInfoText, { color: textColor, opacity: 0.5 }]}
-          >
-            Aplicație Monitorizare Analize Medicale
-          </Text>
-          <Text
-            style={[styles.appInfoText, { color: textColor, opacity: 0.5 }]}
-          >
-            Versiunea 1.0.0
-          </Text>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-// ============================================
-// STYLES
-// ============================================
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
@@ -635,8 +646,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: { marginTop: 10, fontSize: 16 },
-
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -648,8 +657,6 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
   headerSubtitle: { fontSize: 16 },
   editHeaderButton: { padding: 8 },
-
-  // Avatar
   avatarSection: { alignItems: 'center', paddingVertical: 20 },
   avatar: {
     width: 100,
@@ -666,8 +673,6 @@ const styles = StyleSheet.create({
   },
   userName: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
   userEmail: { fontSize: 16, color: '#8E8E93' },
-
-  // BMI Card
   bmiCard: {
     marginHorizontal: 20,
     padding: 20,
@@ -698,8 +703,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   bmiCategoryText: { fontSize: 14, fontWeight: '600' },
-
-  // Section
   section: { paddingHorizontal: 20, marginBottom: 20 },
   sectionHeader: {
     flexDirection: 'row',
@@ -711,8 +714,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
-
-  // Info Card
   infoCard: {
     borderRadius: 12,
     paddingVertical: 8,
@@ -741,8 +742,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   infoDivider: { height: 1, marginHorizontal: 16 },
-
-  // ✅ Gender Selector Styles
   genderSelector: {
     flexDirection: 'row',
     gap: 8,
@@ -763,8 +762,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-
-  // Buttons
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -781,7 +778,6 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: '#007AFF', marginLeft: 10 },
   cancelButtonText: { fontSize: 16, fontWeight: '600' },
   saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -798,8 +794,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
-
-  // App Info
   appInfo: {
     alignItems: 'center',
     paddingTop: 30,
