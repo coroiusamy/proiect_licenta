@@ -22,17 +22,13 @@ import { useAuth } from '@/context/AuthContext';
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const { width } = Dimensions.get('window');
 
-// ... PĂSTRĂM TOATE COMPONENTELE TALE (HealthCard, QuickActionButton) ...
-// ... Copiază HealthCard și QuickActionButton din codul tău vechi aici ...
-
-// --- REPARATIE AICI: RecentAnalysisItem ---
 const RecentAnalysisItem = ({ item, isDark, onPress }: any) => {
   const itemBg = isDark ? '#1C1C1E' : '#FFFFFF';
 
   return (
     <TouchableOpacity
       style={[styles.recentItem, { backgroundColor: itemBg }]}
-      onPress={onPress} // Folosim funcția onPress transmisă
+      onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.recentItemContent}>
@@ -70,9 +66,6 @@ const RecentAnalysisItem = ({ item, isDark, onPress }: any) => {
     </TouchableOpacity>
   );
 };
-
-// ... RESTUL CODULUI TĂU PENTRU HealthCard, QuickActionButton ...
-// (Nu le mai scriu ca să nu lungesc răspunsul, păstrează-le pe ale tale)
 
 const HealthCard = ({
   title,
@@ -165,8 +158,6 @@ export default function HomeScreen() {
     thisMonth: 0,
     lastUpdate: null as Date | null,
   });
-
-  // ... (Funcțiile fetchDashboardData, getGreeting, calculateBMI rămân LA FEL) ...
   const fetchDashboardData = async () => {
     try {
       const profileRes = await axios.get(`${API_URL}/api/user/profile`, {
@@ -294,7 +285,7 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
-        {/* ... HealthCards & QuickActions (RĂMÂN EXACT CUM ERAU) ... */}
+        {/* ... HealthCards & QuickActions... */}
         <View style={styles.section}>
           <Text
             style={[
@@ -398,15 +389,12 @@ export default function HomeScreen() {
                 key={item.id}
                 item={item}
                 isDark={isDark}
-                // --- MODIFICAREA CRITICĂ AICI ---
-                // Mergem la pagina de analiză individuală, nu la istoric
                 onPress={() =>
                   router.push({
                     pathname: '/analiza-detaliu',
                     params: { id: item.id },
                   })
                 }
-                // --------------------------------
               />
             ))}
           </View>
@@ -416,7 +404,6 @@ export default function HomeScreen() {
   );
 }
 
-// ... Stilurile rămân identice cu cele din codul tău original ...
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },

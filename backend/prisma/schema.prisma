@@ -64,6 +64,9 @@ model AnalysisResult {
   userId Int
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  status       String?      // "low", "normal", "high"
+  aiAdvice     String?      // textul generat de AI
+
   // Legătura către Tipul Analizei
   analysisTypeId Int
   analysisType   AnalysisType @relation(fields: [analysisTypeId], references: [id])

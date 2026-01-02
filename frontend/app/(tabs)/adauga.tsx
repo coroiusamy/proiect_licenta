@@ -120,10 +120,8 @@ export default function AdaugaScreen() {
           `analysis_${Date.now()}.${fileType === 'pdf' ? 'pdf' : 'jpg'}`,
       };
 
-      // FIXED: Correct field name is 'analysisFile', not 'pdf'
       formData.append('analysisFile', fileToUpload);
 
-      // FIXED: Correct endpoint is '/upload', not '/upload-pdf'
       const response = await axios.post(
         `${API_URL}/api/analyses/upload`,
         formData,

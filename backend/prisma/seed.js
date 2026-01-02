@@ -545,6 +545,8 @@ const analysisTypesData = [
     name: 'nitriti',
     displayName: 'Nitriți urinari',
     unit: '',
+    refMin: 0,
+    refMax: 0,
     interpretationNormal: 'Negativ. Fără semne de infecție bacteriană urinară.',
     interpretationHigh:
       'Pozitiv. Indică prezența bacteriilor în urină (infecție urinară).',
@@ -553,6 +555,8 @@ const analysisTypesData = [
     name: 'leucocite (esteraza granulocitara)',
     displayName: 'Leucocite urinare (esterază)',
     unit: '/μL',
+    refMin: 0,
+    refMax: 10,
     interpretationNormal: 'Negativ. Fără leucocite în urină.',
     interpretationHigh:
       'Pozitiv. Leucociturie - indică inflamație sau infecție.',
@@ -566,17 +570,25 @@ const analysisTypesData = [
     interpretationHigh: 'Proteinurie. Poate indica boală renală.',
     interpretationNormal: 'Fără proteine în urină (normal).',
   },
-  {
-    name: 'glucoza',
-    displayName: 'Glucoză urinară',
-    unit: 'mg/dL',
-    interpretationNormal: 'Nedetectabil (normal). Fără glucoză în urină.',
-    interpretationHigh: 'Glicozurie. Indică diabet zaharat necontrolat.',
-  },
+
+  // ❌ ȘTERS "glucoza" urinară - Se confunda cu glicemia din sânge!
+  // Dacă vrei să păstrezi glucoza urinară, redenumește-o clar:
+  // {
+  //   name: 'Glucoză urinară (glicozurie)',
+  //   displayName: 'Glucoză urinară',
+  //   unit: 'mg/dL',
+  //   refMin: 0,
+  //   refMax: 15,
+  //   interpretationNormal: 'Nedetectabil (normal). Fără glucoză în urină.',
+  //   interpretationHigh: 'Glicozurie. Indică diabet zaharat necontrolat.',
+  // },
+
   {
     name: 'corpi cetonici',
     displayName: 'Corpi cetonici urinari',
     unit: 'mg/dL',
+    refMin: 0,
+    refMax: 5,
     interpretationNormal: 'Negativ. Fără corpi cetonici în urină.',
     interpretationHigh:
       'Cetonurie. Poate indica diabet zaharat decompensat (cetoacidoză).',
@@ -595,6 +607,8 @@ const analysisTypesData = [
     name: 'bilirubina urinara',
     displayName: 'Bilirubină urinară',
     unit: 'mg/dL',
+    refMin: 0,
+    refMax: 0,
     interpretationNormal: 'Negativ. Fără bilirubină în urină (normal).',
     interpretationHigh:
       'Bilirubinurie. Indică icter obstructiv sau hepatocelular.',
@@ -603,6 +617,8 @@ const analysisTypesData = [
     name: 'hematii (hemoglobina)',
     displayName: 'Hematii/Hemoglobină urinară',
     unit: '/μL',
+    refMin: 0,
+    refMax: 5,
     interpretationNormal: 'Negativ. Fără sânge în urină.',
     interpretationHigh:
       'Hematurie. Poate indica infecție urinară, litiază renală.',
@@ -626,6 +642,8 @@ const analysisTypesData = [
     name: 'Cristale oxalat de calciu',
     displayName: 'Cristale de oxalat de calciu',
     unit: '',
+    refMin: 0,
+    refMax: 0,
     interpretationNormal: 'Absente (normal).',
     interpretationHigh: 'Prezente. Pot indica risc de litiază renală.',
   },
@@ -669,6 +687,8 @@ const analysisTypesData = [
     interpretationHigh: 'Hipertrigliceridemie. Risc cardiovascular.',
     interpretationNormal: 'Trigliceridele sunt în limite normale.',
   },
+
+  // ✅ ACEASTA e cea corectă pentru GLICEMIA DIN SÂNGE!
   {
     name: 'Glicemie (Glucoză serică)',
     displayName: 'Glicemie (Glucoză a jeun)',
@@ -680,6 +700,7 @@ const analysisTypesData = [
     interpretationHigh:
       'Hiperglicemie. Pre-diabet (100-125) sau diabet (≥126).',
   },
+
   {
     name: 'Hemoglobină Glicozilată (HbA1c)',
     displayName: 'HbA1c (Hemoglobină glicată)',
@@ -772,6 +793,8 @@ const analysisTypesData = [
     name: 'Ag HBs (Hepatita B)',
     displayName: 'Antigen HBs (Hepatita B)',
     unit: '',
+    refMin: 0,
+    refMax: 0,
     interpretationNormal: 'Negativ. Nu există infecție activă cu VHB.',
     interpretationHigh: 'Pozitiv/Reactiv. Indică infecție activă cu VHB.',
   },
@@ -788,6 +811,8 @@ const analysisTypesData = [
     name: 'Ac Anti-HCV (Hepatita C)',
     displayName: 'Anticorpi Anti-HCV (Hepatita C)',
     unit: '',
+    refMin: 0,
+    refMax: 0,
     interpretationNormal: 'Negativ. Fără contact cu VHC.',
     interpretationHigh: 'Pozitiv/Reactiv. Indică infecție VHC.',
   },
@@ -795,6 +820,8 @@ const analysisTypesData = [
     name: 'Ag HIV 1+2',
     displayName: 'Test HIV (Anticorpi + Antigen)',
     unit: '',
+    refMin: 0,
+    refMax: 0,
     interpretationNormal: 'Negativ. Fără infecție cu HIV.',
     interpretationHigh:
       'Pozitiv/Reactiv. Test de screening pozitiv pentru HIV.',
@@ -1019,33 +1046,30 @@ const analysisTypesData = [
 ];
 
 async function main() {
-  console.log('🔄 Începem popularea bazei de date cu analize Synevo...\n');
-
-  let addedCount = 0;
-  let updatedCount = 0;
+  console.log(
+    '🔄 Începem popularea bazei de date cu analize ÎMBUNĂTĂȚITE...\n'
+  );
 
   for (const analysis of analysisTypesData) {
-    const result = await prisma.analysisType.upsert({
+    await prisma.analysisType.upsert({
       where: { name: analysis.name },
-      update: analysis, // Dacă există, îl actualizează cu datele noi
-      create: analysis, // Dacă nu există, îl creează
+      update: analysis,
+      create: analysis,
     });
-
-    console.log(`Processed: '${analysis.displayName || analysis.name}'`);
+    console.log(`✅ Procesat: '${analysis.displayName || analysis.name}'`);
   }
 
   const totalInDb = await prisma.analysisType.count();
 
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  console.log(`Populare finalizată cu succes!`);
-  console.log(`Total analize în baza de date: ${totalInDb}`);
-  console.log(`(Scriptul a procesat ${analysisTypesData.length} analize)`);
+  console.log(`✅ Populare finalizată cu succes!`);
+  console.log(`📊 Total analize în baza de date: ${totalInDb}`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 }
 
 main()
   .catch((e) => {
-    console.error('Eroare în timpul populării:', e);
+    console.error('❌ Eroare în timpul populării:', e);
     process.exit(1);
   })
   .finally(async () => {

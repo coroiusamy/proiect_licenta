@@ -9,8 +9,6 @@ export default function TabLayout() {
   const { token, isLoading } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-
-  // Define colors directly (no import needed)
   const activeTintColor = '#007AFF';
   const inactiveTintColor = isDark ? '#8E8E93' : '#8E8E93';
   const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';

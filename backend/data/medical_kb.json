@@ -1,0 +1,106 @@
+[
+  {
+    "keywords": ["glicemie", "glucoza", "glucoză", "glucose"],
+    "info": {
+      "descriere": "Glicemia (glucoza din sânge) este principala sursă de energie pentru corp. Nivelurile normale sunt esențiale pentru funcționarea corectă a organismului.",
+      "valori_normale": "70-100 mg/dL în post (până la 140 mg/dL după masă)",
+      "valori_critice": "Sub 50 mg/dL sau peste 200 mg/dL necesită atenție medicală URGENTĂ!",
+      "cauze_crescut": "Diabet zaharat, consum excesiv de zahăr și carbohidrați simpli, stres cronic, lipsa activității fizice, medicamente (corticoizi), boli pancreatice.",
+      "cauze_scazut": "Lipsă hrană prelungită (post), efort fizic intens, insulină prea multă (la diabetici), consum de alcool, afecțiuni hepatice.",
+      "sfaturi": "Pentru glicemie crescută: Evită zahărul și dulciurile, reduce carbohidrații rafinați (pâine albă, paste), consumă alimente integrale, legume cu fibre, proteină slabă (pui, pește). Practică sport 30 min/zi. IMPORTANT: Peste 200 mg/dL mergi URGENT la medic!",
+      "risc_ridicat": "Valori peste 126 mg/dL în post sau peste 200 mg/dL indică posibil diabet și necesită consultație medicală URGENTĂ pentru diagnostic și tratament."
+    }
+  },
+  {
+    "keywords": ["trigliceride", "triglycerides"],
+    "info": {
+      "descriere": "Trigliceridele sunt grăsimi din sânge provenite din caloriile neutilizate. Niveluri ridicate cresc riscul de boli cardiovasculare.",
+      "valori_normale": "Sub 150 mg/dL (ideal sub 100 mg/dL)",
+      "valori_critice": "Peste 500 mg/dL risc sever de pancreatită! Necesită tratament URGENT!",
+      "cauze_crescut": "Consum excesiv de zahăr și carbohidrați simpli, alcool, obezitate, diabet nezaharat, sedentarism, gră simi saturate.",
+      "cauze_scazut": "Malnutriție, dietă foarte săracă în grăsimi, afecțiuni de absorbție.",
+      "sfaturi": "Pentru trigliceride crescute: Elimină zahărul adăugat și sucurile, reduce carbohidrații rafinați, evită alcoolul complet, consumă pește gras (somon, macrou) bogat în omega-3, alege grăsimi sănătoase (nuci, avocado, ulei de măsline). Sport regulat 150 min/săptămână. Peste 200 mg/dL consultă medicul pentru tratament."
+    }
+  },
+  {
+    "keywords": ["colesterol", "cholesterol"],
+    "info": {
+      "descriere": "Colesterolul total măsoară toate tipurile de colesterol din sânge. Este necesar pentru celule, dar excesul se depune în artere.",
+      "valori_normale": "Sub 200 mg/dL (optim sub 180 mg/dL)",
+      "valori_critice": "Peste 240 mg/dL risc sever cardiovascular!",
+      "cauze_crescut": "Grăsimi saturate (carne roșie, produse lactate grase), trans-grăsimi (prăjeli, fast-food), sedentarism, obezitate, fumat, factori genetici.",
+      "cauze_scazut": "Rar problematic, uneori malnutriție sau boli hepatice severe.",
+      "sfaturi": "Pentru colesterol crescut: Evită grăsimile saturate și trans-grăsimile, consumă mai multe fibre (ovăz, fasole, mere), alege proteină slabă (pui fără piele, pește), nuci și semințe, ulei de măsline. Sport 30 min/zi. Nu fuma. Peste 200 mg/dL verifică LDL și HDL separat cu medicul."
+    }
+  },
+  {
+    "keywords": ["fier", "iron", "fe"],
+    "info": {
+      "descriere": "Fierul este mineral esențial pentru transportul oxigenului prin sânge. Deficiența cauzează oboseală și anemie.",
+      "valori_normale": "Bărbați: 65-175 µg/dL, Femei: 50-170 µg/dL",
+      "cauze_crescut": "Suplimente excesive, hemocromatoză (absorbție excesivă genetică), transfuzii multiple, afecțiuni hepatice.",
+      "cauze_scazut": "Anemie, sângerări (menstruație abundentă, hemoroizi, ulcer), dietă săracă în fier, sarcină, creștere la copii/adolescenți.",
+      "sfaturi": "Pentru fier scăzut: Consumă carne roșie, ficat, spanac, linte, fasole, semințe de dovleac. Adaugă vitamina C (portocale, lămâie, ardei) pentru absorbție mai bună. Evită ceaiul negru la masă (blochează absorbția). Pentru fier crescut: Donează sânge regulat (dacă recomandat de medic), evită suplimentele cu fier."
+    }
+  },
+  {
+    "keywords": ["hemoglobină", "hemoglobina", "hb", "hgb"],
+    "info": {
+      "descriere": "Hemoglobina este proteina din globulele roșii care transportă oxigenul. Valori scăzute indică anemie.",
+      "valori_normale": "Bărbați: 13.5-17.5 g/dL, Femei: 12.0-15.5 g/dL",
+      "cauze_crescut": "Deshidratare, fumat, boli pulmonare cronice (BPOC), viață la altitudine mare.",
+      "cauze_scazut": "Anemie (deficit fier, B12, folat), pierdere de sânge, boli cronice renale/hepatice, malnutriție.",
+      "sfaturi": "Pentru hemoglobină scăzută: Consumă alimente bogate în fier (carne, spanac, linte), vitamina B12 (carne, ouă, lactate), acid folic (legume verzi). Vitamina C ajută absorbția fierului. Evită ceaiul la masă. Pentru valori crescute: Hidratare corespunzătoare, oprește fumatul dacă fumezi."
+    }
+  },
+  {
+    "keywords": ["creatinină", "creatinina", "creatinine"],
+    "info": {
+      "descriere": "Creatinina este produs rezidual filtrat de rinichi. Niveluri crescute indică probleme renale.",
+      "valori_normale": "Bărbați: 0.7-1.3 mg/dL, Femei: 0.6-1.1 mg/dL",
+      "cauze_crescut": "Afecțiuni renale (insuficiență renală), deshidratare, dietă hiperproteică, mușchi foarte dezvoltați (culturism).",
+      "cauze_scazut": "Masă musculară redusă, sarcină, malnutriție proteică.",
+      "sfaturi": "Pentru creatinină crescută: Hidratare adecvată (2-3L apă/zi), reduce proteinele dacă sunt excesive, limitează sarea, evită medicamente nefrotoxice (doar sub supraveghere medicală). Consultă medicul URGENT dacă creatinina depășește 1.5 mg/dL! Pentru valori scăzute: Asigură aport proteic adecvat, exerciții pentru mușchi."
+    }
+  },
+  {
+    "keywords": ["uree", "urea"],
+    "info": {
+      "descriere": "Ureea este produs de degradare a proteinelor, eliminat de rinichi. Valori crescute pot indica probleme renale.",
+      "valori_normale": "15-40 mg/dL",
+      "cauze_crescut": "Afecțiuni renale, deshidratare, dietă foarte bogată în proteine, sângerări gastrointestinale.",
+      "cauze_scazut": "Afecțiuni hepatice severe, dietă săracă în proteine, suprahidratare.",
+      "sfaturi": "Pentru uree crescută: Hidratare suficientă, reduce consumul de proteine animale, evită deshidratarea. Consultă medicul pentru evaluare funcție renală. Pentru uree scăzută: Asigură aport proteic adecvat, verifică funcția hepatică."
+    }
+  },
+  {
+    "keywords": ["tgo", "ast", "aspartat aminotransferaza"],
+    "info": {
+      "descriere": "TGO (AST) este enzimă prezentă în ficat, inimă, mușchi. Niveluri crescute indică leziuni la aceste organe.",
+      "valori_normale": "10-40 U/L",
+      "cauze_crescut": "Afecțiuni hepatice (hepatită, ciroză, ficat gras), infarct miocardic, leziuni musculare, consum excesiv de alcool.",
+      "cauze_scazut": "Rar semnificativ clinic.",
+      "sfaturi": "Pentru TGO crescut: Elimină alcoolul complet, pierde în greutate dacă ești supraponderal, evită alimentele procesate și grăsimile saturate, consumă mai multe legume și fibre. Consultă medicul pentru excluderea hepatitei sau altor afecțiuni hepatice."
+    }
+  },
+  {
+    "keywords": ["tgp", "alt", "alanin aminotransferaza"],
+    "info": {
+      "descriere": "TGP (ALT) este enzimă specifică ficatului. Creșteri indică afectare hepatică.",
+      "valori_normale": "7-56 U/L",
+      "cauze_crescut": "Hepatită (virală, alcoolică, medicamentoasă), ficat gras (steatoză), ciroză, obezitate.",
+      "cauze_scazut": "Rar semnificativ.",
+      "sfaturi": "Pentru TGP crescut: Oprește alcoolul, scade în greutate gradual (0.5-1 kg/săptămână), evită grăsimile saturate și zahărul, consumă mai multe legume cu fibre, activitate fizică regulată. Consultă medicul pentru evaluare hepatică completă și excluderea hepatitelor virale."
+    }
+  },
+  {
+    "keywords": ["bilirubină", "bilirubina", "bilirubin"],
+    "info": {
+      "descriere": "Bilirubina este pigment galben din degradarea globulelor roșii. Excesul cauzează icter (îngălbenirea pielii).",
+      "valori_normale": "0.3-1.2 mg/dL (totală)",
+      "cauze_crescut": "Afecțiuni hepatice (hepatită, ciroză), obstrucție biliară (pietre), anemie hemolitică, sindrom Gilbert (benign).",
+      "cauze_scazut": "Rar semnificativ.",
+      "sfaturi": "Pentru bilirubină crescută: Hidratare bună, evită alcoolul, protejează ficatul (evită medicamente hepatotoxice). Dacă pielea devine galbenă (icter), consultă medicul URGENT pentru excluderea hepatitei sau obstrucției biliare."
+    }
+  }
+]
