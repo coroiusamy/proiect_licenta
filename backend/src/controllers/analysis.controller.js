@@ -1,13 +1,14 @@
 import { PrismaClient } from '@prisma/client';
+import { generateWellnessAdvice } from '../services/ai.service.js';
 
 const prisma = new PrismaClient();
 
-// Toate analizele din sisteam
+// Toate tipurile de analize din sistem (PUBLIC)
 export const getAllAnalysisTypes = async (req, res) => {
   try {
     const types = await prisma.analysisType.findMany({
       orderBy: {
-        name: 'asc', // Ordonat alfabetic
+        displayName: 'asc', // Ordonat alfabetic după displayName
       },
     });
     res.status(200).json(types);
@@ -24,15 +25,13 @@ export const getMyResults = async (req, res) => {
 
     const results = await prisma.analysisResult.findMany({
       where: {
-        userId: userId, // Gaseste doar rezultatele userului logat
+        userId: userId,
       },
-
-      // detaliile despre tipul analizei (nume, unitate, refMin/Max)
       include: {
         analysisType: true,
       },
       orderBy: {
-        date: 'desc', // Cele mai noi primele
+        date: 'desc',
       },
     });
 
@@ -43,12 +42,10 @@ export const getMyResults = async (req, res) => {
   }
 };
 
-// Adauga un rezultat nou (pentru userul logat)
+// Adaugă un rezultat nou (cu AI în background + detectare severitate)
 export const addAnalysisResult = async (req, res) => {
   try {
     const userId = req.userId;
-
-    // datele din formularul trimis de aplicația mobilă
     const { analysisTypeId, date, value, stringValue, notes } = req.body;
 
     if (!analysisTypeId || !date) {
@@ -57,28 +54,103 @@ export const addAnalysisResult = async (req, res) => {
         .json({ message: 'Tipul analizei și data sunt obligatorii.' });
     }
 
-    // Introducerea noilor rezultate in tabel
+    console.log('📝 Primire cerere adăugare analiză...');
+
+    // Caută tipul de analiză
+    const type = await prisma.analysisType.findUnique({
+      where: { id: Number(analysisTypeId) },
+    });
+
+    if (!type) {
+      return res.status(404).json({ message: 'Tip analiză nu există.' });
+    }
+
+    // Calculare STATUS (normal/low/high)
+    let status = 'normal';
+    const numValue = value ? Number(value) : null;
+
+    if (numValue !== null && type.refMin !== null && type.refMax !== null) {
+      if (numValue < type.refMin) status = 'low';
+      else if (numValue > type.refMax) status = 'high';
+    }
+
+    console.log(
+      `📊 Status calculat: ${status} (valoare: ${numValue}, interval: ${type.refMin}-${type.refMax})`
+    );
+
+    // Salvează în DB (aiAdvice = null inițial)
     const newResult = await prisma.analysisResult.create({
       data: {
-        userId: userId, // ID-ul userului logat
-        analysisTypeId: Number(analysisTypeId), // ID-ul analizei (ex: 5 pt Glicemie)
-        date: new Date(date), // Convertim string-ul datei în obiect Date
-        value: value ? Number(value) : null,
+        userId: userId,
+        analysisTypeId: Number(analysisTypeId),
+        date: new Date(date),
+        value: numValue,
         stringValue: stringValue || null,
         notes: notes || null,
+        status: status,
+        aiAdvice: null,
       },
     });
 
-    res
-      .status(201)
-      .json({ message: 'Analiză adăugată cu succes!', data: newResult });
+    // Răspunde IMEDIAT clientului
+    res.status(201).json({
+      message: 'Analiză adăugată cu succes!',
+      data: newResult,
+    });
+
+    // ============================================
+    // AI GENERARE ÎN BACKGROUND (non-blocking!)
+    // ============================================
+    (async () => {
+      try {
+        console.log(
+          `🤖 [Background] Începem generarea AI pentru ID: ${newResult.id}...`
+        );
+
+        // Generăm sfat AI DOAR dacă e numeric și avem intervale
+        if (numValue !== null && type.refMin !== null && type.refMax !== null) {
+          const aiAdvice = await generateWellnessAdvice(
+            type.name,
+            numValue,
+            type.unit,
+            status,
+            type.refMin, // ← IMPORTANT pentru detectare severitate!
+            type.refMax // ← IMPORTANT pentru detectare severitate!
+          );
+
+          if (aiAdvice) {
+            // Salvăm în DB
+            await prisma.analysisResult.update({
+              where: { id: newResult.id },
+              data: { aiAdvice: aiAdvice },
+            });
+            console.log(
+              `✅ [Background] Sfat salvat pentru ID: ${newResult.id}`
+            );
+          } else {
+            console.log(
+              `⚠️ [Background] Nu s-a generat sfat pentru ID: ${newResult.id}`
+            );
+          }
+        } else {
+          console.log(
+            `ℹ️ [Background] Skip AI pentru ID: ${newResult.id} (nu e numeric sau lipsesc intervale)`
+          );
+        }
+      } catch (bgError) {
+        console.error(
+          `❌ [Background] Eroare generare AI pentru ID: ${newResult.id}`,
+          bgError
+        );
+      }
+    })();
   } catch (error) {
     console.error('Eroare la adăugarea analizei:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
 
-//sterge un buletin de analize pe o data specifica
+// Șterge un buletin de analize pe o dată specifică
 export const deleteAnalysesByDate = async (req, res) => {
   try {
     const userId = req.userId;
@@ -90,27 +162,19 @@ export const deleteAnalysesByDate = async (req, res) => {
         .json({ message: 'Data lipsește sau este invalidă.' });
     }
 
-    // Convertim data ISO primită într-un obiect Date
     const targetDate = new Date(date);
     if (isNaN(targetDate.getTime())) {
-      return res.status(400).json({ message: 'Formatul datei este invalid.' });
+      return res.status(400).json({ message: 'Data este invalidă.' });
     }
 
-    // (ex: 25.11.2020 ora 00:00:00)
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    console.log(
-      `Backend: Se șterg analizele pentru UserID: ${userId} între ${startOfDay.toISOString()} și ${endOfDay.toISOString()}`
-    );
-
-    // Folosim 'deleteMany' pentru a șterge toate intrările
-    const deleteResult = await prisma.analysisResult.deleteMany({
+    const deleted = await prisma.analysisResult.deleteMany({
       where: {
-        userId: userId, // Doar al userului logat
+        userId: userId,
         date: {
           gte: startOfDay,
           lte: endOfDay,
@@ -119,18 +183,16 @@ export const deleteAnalysesByDate = async (req, res) => {
     });
 
     res.status(200).json({
-      message: `Buletinul de analize din ${targetDate.toLocaleDateString(
-        'ro-RO'
-      )} a fost șters.`,
-      count: deleteResult.count,
+      message: `Șterse ${deleted.count} analize pentru data ${date}.`,
+      deletedCount: deleted.count,
     });
   } catch (error) {
     console.error('Eroare la ștergerea analizelor:', error);
-    res.status(500).json({ message: 'Eroare server la ștergere.' });
+    res.status(500).json({ message: 'Eroare server' });
   }
 };
 
-//Formateaza/Pregateste datele pentru graficul unei analize
+// Formatează/Pregătește datele pentru graficul unei analize
 export const getChartData = async (req, res) => {
   try {
     const userId = req.userId;
@@ -142,7 +204,7 @@ export const getChartData = async (req, res) => {
         .json({ message: 'ID-ul tipului de analiză este invalid.' });
     }
 
-    // Analiza dorita petntru userul 'x'
+    // Analiza dorită pentru userul 'x'
     const results = await prisma.analysisResult.findMany({
       where: {
         userId: userId,
@@ -163,6 +225,34 @@ export const getChartData = async (req, res) => {
     res.status(200).json(results);
   } catch (error) {
     console.error('Eroare la preluarea datelor pentru grafic:', error);
+    res.status(500).json({ message: 'Eroare server' });
+  }
+};
+
+// Obține un singur rezultat (cu detalii) - pentru polling
+export const getAnalysisById = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { id } = req.params;
+
+    const result = await prisma.analysisResult.findUnique({
+      where: { id: Number(id) },
+      include: {
+        analysisType: true,
+      },
+    });
+
+    if (!result) {
+      return res.status(404).json({ message: 'Analiză nu există.' });
+    }
+
+    if (result.userId !== userId) {
+      return res.status(403).json({ message: 'Acces interzis.' });
+    }
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Eroare la preluarea analizei:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
