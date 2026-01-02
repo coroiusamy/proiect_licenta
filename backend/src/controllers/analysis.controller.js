@@ -8,7 +8,7 @@ export const getAllAnalysisTypes = async (req, res) => {
   try {
     const types = await prisma.analysisType.findMany({
       orderBy: {
-        displayName: 'asc', // Ordonat alfabetic după displayName
+        displayName: 'asc', // E bine să ordonezi după numele afișat
       },
     });
     res.status(200).json(types);
@@ -42,7 +42,7 @@ export const getMyResults = async (req, res) => {
   }
 };
 
-// Adaugă un rezultat nou (cu AI în background + detectare severitate)
+// ✅ OPTIMIZAT: AI DOAR pentru valori ANORMALE!
 export const addAnalysisResult = async (req, res) => {
   try {
     const userId = req.userId;
@@ -67,7 +67,9 @@ export const addAnalysisResult = async (req, res) => {
 
     // Calculare STATUS (normal/low/high)
     let status = 'normal';
-    const numValue = value ? Number(value) : null;
+    // Folosim Number() și validăm că nu e NaN
+    const parsedVal = Number(value);
+    const numValue = value && !isNaN(parsedVal) ? parsedVal : null;
 
     if (numValue !== null && type.refMin !== null && type.refMax !== null) {
       if (numValue < type.refMin) status = 'low';
@@ -78,7 +80,23 @@ export const addAnalysisResult = async (req, res) => {
       `📊 Status calculat: ${status} (valoare: ${numValue}, interval: ${type.refMin}-${type.refMax})`
     );
 
-    // Salvează în DB (aiAdvice = null inițial)
+    // ============================================
+    // ✅ OPTIMIZARE: AI DOAR PENTRU ANORMALE!
+    // ============================================
+    let initialAiAdvice = null;
+
+    // Dacă e NORMAL → mesaj generic INSTANT (fără AI!)
+    if (status === 'normal' && numValue !== null) {
+      initialAiAdvice = `✅ Rezultatul tău de ${numValue} ${
+        type.unit || ''
+      } este în intervalul normal (${type.refMin}-${
+        type.refMax
+      }).\n\nFelicitări! Această valoare indică o stare bună de sănătate. Continuă să menții acest echilibru prin alimentație sănătoasă și activitate fizică regulată.\n\nAcesta este un sfat informativ. Consultă medicul pentru evaluare completă.`;
+
+      console.log(`✅ [Instant] Status NORMAL → mesaj generic (fără AI)`);
+    }
+
+    // Salvează în DB
     const newResult = await prisma.analysisResult.create({
       data: {
         userId: userId,
@@ -88,65 +106,70 @@ export const addAnalysisResult = async (req, res) => {
         stringValue: stringValue || null,
         notes: notes || null,
         status: status,
-        aiAdvice: null,
+        aiAdvice: initialAiAdvice, // null pentru anormale, mesaj pentru normale
       },
+      include: { analysisType: true }, // Returnăm tipul ca să avem numele în frontend
     });
 
-    // Răspunde IMEDIAT clientului
+    // Răspunde IMEDIAT clientului 🚀
     res.status(201).json({
       message: 'Analiză adăugată cu succes!',
       data: newResult,
     });
 
     // ============================================
-    // AI GENERARE ÎN BACKGROUND (non-blocking!)
+    // AI GENERARE ÎN BACKGROUND - DOAR PENTRU ANORMALE!
     // ============================================
-    (async () => {
-      try {
-        console.log(
-          `🤖 [Background] Începem generarea AI pentru ID: ${newResult.id}...`
-        );
+    const finalValue = numValue !== null ? numValue : stringValue;
 
-        // Generăm sfat AI DOAR dacă e numeric și avem intervale
-        if (numValue !== null && type.refMin !== null && type.refMax !== null) {
+    if (status !== 'normal' && finalValue) {
+      // 🔥 AICI AM ADĂUGAT SETTIMEOUT PENTRU SIGURANȚĂ
+      setTimeout(async () => {
+        try {
+          console.log(
+            `🚨 [Background] Status ${status.toUpperCase()} → Generăm AI pentru ID: ${
+              newResult.id
+            }...`
+          );
+
           const aiAdvice = await generateWellnessAdvice(
             type.name,
-            numValue,
-            type.unit,
+            finalValue,
+            type.unit || '',
             status,
-            type.refMin, // ← IMPORTANT pentru detectare severitate!
-            type.refMax // ← IMPORTANT pentru detectare severitate!
+            type.refMin,
+            type.refMax
           );
 
           if (aiAdvice) {
-            // Salvăm în DB
             await prisma.analysisResult.update({
               where: { id: newResult.id },
               data: { aiAdvice: aiAdvice },
             });
             console.log(
-              `✅ [Background] Sfat salvat pentru ID: ${newResult.id}`
+              `✅ [Background] Sfat AI salvat pentru ID: ${newResult.id}`
             );
           } else {
-            console.log(
-              `⚠️ [Background] Nu s-a generat sfat pentru ID: ${newResult.id}`
-            );
+            console.log(`⚠️ [Background] AI nu a generat răspuns.`);
           }
-        } else {
-          console.log(
-            `ℹ️ [Background] Skip AI pentru ID: ${newResult.id} (nu e numeric sau lipsesc intervale)`
+        } catch (bgError) {
+          console.error(
+            `❌ [Background] Eroare generare AI pentru ID: ${newResult.id}`,
+            bgError
           );
         }
-      } catch (bgError) {
-        console.error(
-          `❌ [Background] Eroare generare AI pentru ID: ${newResult.id}`,
-          bgError
-        );
-      }
-    })();
+      }, 100); // Așteaptă 100ms ca să fie sigur că telefonul a primit răspunsul
+    } else if (status === 'normal') {
+      console.log(`ℹ️ [Skip AI] Status NORMAL → Mesaj deja setat.`);
+    } else {
+      console.log(`ℹ️ [Skip AI] Nu sunt date suficiente pentru AI.`);
+    }
   } catch (error) {
     console.error('Eroare la adăugarea analizei:', error);
-    res.status(500).json({ message: 'Eroare server' });
+    // Verificăm dacă nu am trimis deja răspunsul
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Eroare server' });
+    }
   }
 };
 
@@ -204,7 +227,6 @@ export const getChartData = async (req, res) => {
         .json({ message: 'ID-ul tipului de analiză este invalid.' });
     }
 
-    // Analiza dorită pentru userul 'x'
     const results = await prisma.analysisResult.findMany({
       where: {
         userId: userId,
@@ -229,7 +251,7 @@ export const getChartData = async (req, res) => {
   }
 };
 
-// Obține un singur rezultat (cu detalii) - pentru polling
+// Obține un singur rezultat (cu detalii)
 export const getAnalysisById = async (req, res) => {
   try {
     const userId = req.userId;

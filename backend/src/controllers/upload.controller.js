@@ -3,6 +3,7 @@ import { parseSynevoPdf } from '../services/pdfParser.service.js';
 import { PrismaClient } from '@prisma/client';
 import { createWorker } from 'tesseract.js';
 import sharp from 'sharp';
+import { generateWellnessAdvice } from '../services/ai.service.js';
 
 const prisma = new PrismaClient();
 
@@ -17,79 +18,150 @@ export const uploadAnalysisFile = async (req, res) => {
   let textContent = '';
 
   try {
-    console.log(
-      'Fișierul primit de server:',
-      req.file.originalname,
-      req.file.mimetype
-    );
+    console.log('Fișierul primit:', req.file.originalname);
 
-    // --- Procesare PDF ---
+    // --- 1. EXTRAGERE TEXT (PDF sau OCR) ---
     if (req.file.mimetype === 'application/pdf') {
-      console.log('Controller: Procesare PDF...');
       const data = await pdf(req.file.buffer);
       textContent = data.text;
-
-      // --- Procesare Imagine (OCR cu pre-procesare SIMPLIFICATĂ) ---
     } else if (req.file.mimetype.startsWith('image/')) {
-      console.log('Controller: Procesare Imagine (OCR)...');
-
-      // Pre-procesare imagine, convertim la grayscale.
       const processedImage = await sharp(req.file.buffer)
         .grayscale()
         .toBuffer();
-
       const worker = await createWorker('ron', 1);
-
       const ret = await worker.recognize(processedImage);
       textContent = ret.data.text;
-
       await worker.terminate();
-
-      console.log('--- TEXT EXTRAS DIN OCR (SIMPLIFICAT) ---');
-      console.log(textContent.substring(0, 800) + '...');
-      console.log('---------------------------');
     } else {
+      return res.status(400).json({ message: 'Format neacceptat.' });
+    }
+
+    // --- 2. PARSARE DATE (Identificare valori) ---
+    console.log('Controller: Parsare text...');
+    const extractedResults = await parseSynevoPdf(textContent, userId);
+
+    if (extractedResults.length === 0) {
       return res.status(400).json({
-        message: 'Tip de fișier neacceptat. Încărcați PDF sau imagine.',
+        message: 'Nu s-au putut extrage analize. Încearcă un PDF mai clar.',
       });
     }
 
-    // --- Parsarea Textului Extras ---
-    console.log('Controller: Trimit textul către parser...');
-    const resultsToSave = await parseSynevoPdf(textContent, userId);
-
-    if (resultsToSave.length === 0) {
-      console.warn('Controller: Parser-ul nu a returnat niciun rezultat.');
-      return res.status(400).json({
-        message:
-          'Fișier procesat, dar nu s-au putut extrage rezultate compatibile. Verifică calitatea imaginii sau încarcă un PDF.',
-      });
-    }
-
-    // --- Salvarea în Baza de Date ---
     console.log(
-      `Controller: Încerc să salvez ${resultsToSave.length} rezultate...`
+      `Controller: ${extractedResults.length} analize identificate. Începem procesarea HIBRIDĂ...`
     );
 
-    const creationResult = await prisma.analysisResult.createMany({
-      data: resultsToSave,
-      skipDuplicates: true,
-    });
+    // --- 3. PREGĂTIRE DATE (Luăm toate tipurile din DB pentru referințe) ---
+    const allTypes = await prisma.analysisType.findMany();
 
-    console.log(`Controller: ${creationResult.count} rezultate salvate.`);
+    const savedResults = [];
+    const backgroundJobs = [];
+
+    // --- 4. PROCESARE INTELIGENTĂ (Iterăm prin fiecare rezultat) ---
+    for (const item of extractedResults) {
+      const typeInfo = allTypes.find((t) => t.id === item.analysisTypeId);
+      let status = 'normal';
+      const numValue = item.value;
+
+      if (
+        typeInfo &&
+        numValue !== null &&
+        typeInfo.refMin !== null &&
+        typeInfo.refMax !== null
+      ) {
+        if (numValue < typeInfo.refMin) status = 'low';
+        else if (numValue > typeInfo.refMax) status = 'high';
+      }
+
+      // Logică Hibridă: Mesaj Instant pentru Normal
+      let aiAdvice = null;
+      if (status === 'normal' && numValue !== null) {
+        aiAdvice = `✅ Rezultatul de ${numValue} ${
+          typeInfo?.unit || ''
+        } este în limite normale (${typeInfo?.refMin} - ${
+          typeInfo?.refMax
+        }).\nSănătatea ta este protejată!`;
+      }
+
+      // Salvăm în baza de date (individual, pentru a avea ID-ul)
+      const savedRecord = await prisma.analysisResult.create({
+        data: {
+          userId: userId,
+          analysisTypeId: item.analysisTypeId,
+          date: item.date,
+          value: item.value,
+          stringValue: item.stringValue,
+          notes: 'Importat automat din PDF',
+          status: status,
+          aiAdvice: aiAdvice,
+        },
+        include: { analysisType: true },
+      });
+
+      savedResults.push(savedRecord);
+
+      // Dacă e ANORMAL, îl punem pe lista de așteptare pentru AI
+      if (status !== 'normal' && numValue !== null && typeInfo) {
+        backgroundJobs.push({
+          id: savedRecord.id,
+          name: typeInfo.name,
+          value: numValue,
+          unit: typeInfo.unit,
+          status: status,
+          refMin: typeInfo.refMin,
+          refMax: typeInfo.refMax,
+        });
+      }
+    }
+
+    // --- 5. RĂSPUNS RAPID CĂTRE CLIENT ---
+    console.log(
+      `✅ Salvate: ${savedResults.length}. Job-uri AI în coadă: ${backgroundJobs.length}`
+    );
 
     res.status(201).json({
-      message: `Fișier procesat și ${creationResult.count} rezultate salvate!`,
-      count: creationResult.count,
-      data: resultsToSave.slice(0, 5),
+      message: `Procesat cu succes! ${savedResults.length} analize salvate.`,
+      count: savedResults.length,
+      aiPending: backgroundJobs.length,
     });
+
+    // --- 6. EXECUTARE AI ÎN BACKGROUND (După răspuns) ---
+    if (backgroundJobs.length > 0) {
+      setTimeout(async () => {
+        console.log(
+          `🤖 [Background] Începem procesarea a ${backgroundJobs.length} analize anormale...`
+        );
+
+        // Procesăm una câte una ca să nu blocăm Ollama
+        for (const job of backgroundJobs) {
+          try {
+            console.log(`   Processing AI for: ${job.name} (${job.status})...`);
+            const advice = await generateWellnessAdvice(
+              job.name,
+              job.value,
+              job.unit || '',
+              job.status,
+              job.refMin,
+              job.refMax
+            );
+
+            if (advice) {
+              await prisma.analysisResult.update({
+                where: { id: job.id },
+                data: { aiAdvice: advice },
+              });
+              console.log(`   ✅ Sfat salvat pentru ID ${job.id}`);
+            }
+          } catch (err) {
+            console.error(`   ❌ AI Error for ID ${job.id}:`, err.message);
+          }
+        }
+        console.log(`🤖 [Background] Toate job-urile AI finalizate.`);
+      }, 1000); // Pornim după 1 secundă
+    }
   } catch (error) {
-    console.error('Eroare în procesul de upload/parsare:', error);
-    res.status(500).json({
-      message: error.message || 'Eroare server la procesarea fișierului.',
-      hint: req.file.mimetype.startsWith('image/')
-        ? 'Pentru poze, asigură-te că imaginea este clară și bine luminată. PDF-urile dau rezultate mai bune.'
-        : undefined,
-    });
+    console.error('Eroare upload:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Eroare la procesarea fișierului.' });
+    }
   }
 };
