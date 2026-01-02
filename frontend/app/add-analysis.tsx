@@ -15,9 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import SearchableDropdown from '@/components/SearchableDropdown';
 
 import { useAuth } from '@/context/AuthContext';
 
@@ -28,8 +28,9 @@ export default function AddAnalysisScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [analysisTypes, setAnalysisTypes] = useState<any[]>([]);
+  const [isLoadingTypes, setIsLoadingTypes] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [selectedType, setSelectedType] = useState('');
@@ -42,6 +43,7 @@ export default function AddAnalysisScreen() {
   const textColor = isDark ? '#FFFFFF' : '#000000';
   const inputBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const placeholderColor = isDark ? '#8E8E93' : '#8E8E93';
+  const borderColor = isDark ? '#2C2C2E' : '#E5E5EA';
 
   useEffect(() => {
     fetchAnalysisTypes();
@@ -62,6 +64,8 @@ export default function AddAnalysisScreen() {
         text1: 'Eroare',
         text2: 'Nu s-au putut încărca tipurile de analize.',
       });
+    } finally {
+      setIsLoadingTypes(false);
     }
   };
 
@@ -80,7 +84,6 @@ export default function AddAnalysisScreen() {
       return;
     }
 
-    // Validate
     const isNumeric = typeInfo.unit && typeInfo.unit.length > 0;
 
     if (isNumeric && !value) {
@@ -101,7 +104,7 @@ export default function AddAnalysisScreen() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
 
     try {
       const payload = {
@@ -112,24 +115,33 @@ export default function AddAnalysisScreen() {
         notes: notes || null,
       };
 
-      await axios.post(`${API_URL}/api/analyses`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // LANSEAZĂ REQUEST (NU aștepta răspunsul!)
+      axios
+        .post(`${API_URL}/api/analyses`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then(() => {
+          // Succes - arată toast după ce ne-am întors
+          setTimeout(() => {
+            Toast.show({
+              type: 'success',
+              text1: '✅ Analiză salvată!',
+              text2: '🤖 AI generează recomandări în fundal',
+              visibilityTime: 4000,
+            });
+          }, 500);
+        })
+        .catch((error) => {
+          // Eroare - arată mesaj
+          Toast.show({
+            type: 'error',
+            text1: 'Eroare',
+            text2: error.response?.data?.message || 'Nu s-a putut salva.',
+          });
+        });
 
-      Toast.show({
-        type: 'success',
-        text1: 'Salvată!',
-        text2: 'Analiza a fost adăugată.',
-      });
-
-      setValue('');
-      setStringValue('');
-      setNotes('');
-      setDate(new Date());
-
-      setTimeout(() => {
-        router.back();
-      }, 1000);
+      // NAVIGHEAZĂ ÎNAPOI IMEDIAT (nu aștepta!)
+      router.back();
     } catch (error: any) {
       console.error('Error submitting:', error);
       Toast.show({
@@ -137,13 +149,23 @@ export default function AddAnalysisScreen() {
         text1: 'Eroare',
         text2: error.response?.data?.message || 'Nu s-a putut salva.',
       });
-    } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
   const typeInfo = getSelectedTypeInfo();
   const isNumeric = typeInfo?.unit && typeInfo.unit.length > 0;
+
+  if (isLoadingTypes) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: containerBg }]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={[styles.loadingText, { color: textColor }]}>
+          Se încarcă tipurile de analize...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -158,6 +180,7 @@ export default function AddAnalysisScreen() {
           style={[styles.container, { backgroundColor: containerBg }]}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
             <TouchableOpacity
@@ -177,40 +200,17 @@ export default function AddAnalysisScreen() {
           </View>
 
           <View style={styles.form}>
-            {/* TYPE */}
+            {/* TYPE - SEARCHABLE */}
             <View style={styles.formGroup}>
               <Text style={[styles.label, { color: textColor }]}>
                 Tip Analiză *
               </Text>
-              {analysisTypes.length === 0 ? (
-                <View style={[styles.emptyState, { backgroundColor: inputBg }]}>
-                  <ActivityIndicator color="#007AFF" />
-                  <Text style={[styles.emptyText, { color: textColor }]}>
-                    Se încarcă...
-                  </Text>
-                </View>
-              ) : (
-                <View
-                  style={[styles.pickerContainer, { backgroundColor: inputBg }]}
-                >
-                  <Picker
-                    selectedValue={selectedType}
-                    onValueChange={setSelectedType}
-                    style={[styles.picker, { color: textColor }]}
-                    dropdownIconColor={textColor}
-                  >
-                    {analysisTypes.map((type) => (
-                      <Picker.Item
-                        key={type.id}
-                        label={`${type.name}${
-                          type.unit ? ` (${type.unit})` : ''
-                        }`}
-                        value={type.id.toString()}
-                      />
-                    ))}
-                  </Picker>
-                </View>
-              )}
+              <SearchableDropdown
+                items={analysisTypes}
+                selectedValue={selectedType}
+                onValueChange={setSelectedType}
+                placeholder="Selectează analiză"
+              />
             </View>
 
             {/* VALUE */}
@@ -222,17 +222,13 @@ export default function AddAnalysisScreen() {
                 <TextInput
                   style={[
                     styles.input,
-                    {
-                      backgroundColor: inputBg,
-                      color: textColor,
-                      borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
-                    },
+                    { backgroundColor: inputBg, color: textColor, borderColor },
                   ]}
                   value={isNumeric ? value : stringValue}
                   onChangeText={isNumeric ? setValue : setStringValue}
                   placeholder={
                     isNumeric
-                      ? `Ex: 62${typeInfo.unit ? ` ${typeInfo.unit}` : ''}`
+                      ? `Ex: 95${typeInfo.unit ? ` ${typeInfo.unit}` : ''}`
                       : 'Introdu valoare'
                   }
                   placeholderTextColor={placeholderColor}
@@ -253,10 +249,7 @@ export default function AddAnalysisScreen() {
               <TouchableOpacity
                 style={[
                   styles.dateButton,
-                  {
-                    backgroundColor: inputBg,
-                    borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
-                  },
+                  { backgroundColor: inputBg, borderColor },
                 ]}
                 onPress={() => setShowDatePicker(true)}
               >
@@ -295,11 +288,7 @@ export default function AddAnalysisScreen() {
               <TextInput
                 style={[
                   styles.textArea,
-                  {
-                    backgroundColor: inputBg,
-                    color: textColor,
-                    borderColor: isDark ? '#2C2C2E' : '#E5E5EA',
-                  },
+                  { backgroundColor: inputBg, color: textColor, borderColor },
                 ]}
                 value={notes}
                 onChangeText={setNotes}
@@ -313,26 +302,24 @@ export default function AddAnalysisScreen() {
           </View>
         </ScrollView>
 
+        {/* FOOTER - BUTON SALVEAZĂ */}
         <View
           style={[
             styles.footer,
-            {
-              backgroundColor: containerBg,
-              borderTopColor: isDark ? '#2C2C2E' : '#E5E5EA',
-            },
+            { backgroundColor: containerBg, borderTopColor: borderColor },
           ]}
         >
           <TouchableOpacity
-            style={[
-              styles.submitButton,
-              (isLoading || analysisTypes.length === 0) && { opacity: 0.6 },
-            ]}
+            style={[styles.submitButton, isSaving && { opacity: 0.6 }]}
             onPress={handleSubmit}
-            disabled={isLoading || analysisTypes.length === 0}
+            disabled={isSaving}
             activeOpacity={0.8}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+            {isSaving ? (
+              <>
+                <ActivityIndicator color="#FFFFFF" />
+                <Text style={styles.submitText}>Se salvează...</Text>
+              </>
             ) : (
               <>
                 <MaterialIcons name="check" size={24} color="#FFFFFF" />
@@ -350,6 +337,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
   scrollContent: { paddingBottom: 20 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 10, fontSize: 16 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -378,13 +367,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     fontSize: 16,
   },
-  pickerContainer: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  picker: { height: 50 },
   dateButton: {
     height: 50,
     borderWidth: 1,
@@ -396,14 +378,6 @@ const styles = StyleSheet.create({
   },
   dateText: { fontSize: 16 },
   hint: { fontSize: 13, color: '#8E8E93', marginTop: 6 },
-  emptyState: {
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  emptyText: { fontSize: 14, marginTop: 8 },
   footer: { padding: 20, borderTopWidth: 1 },
   submitButton: {
     backgroundColor: '#007AFF',

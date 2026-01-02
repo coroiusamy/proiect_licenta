@@ -156,6 +156,18 @@ export default function ProfilScreen() {
     return { label: 'Obezitate', color: '#FF3B30' };
   };
 
+  const getGenderDisplay = (gender: string) => {
+    if (gender === 'M' || gender === 'Masculin') return 'Masculin';
+    if (gender === 'F' || gender === 'Feminin') return 'Feminin';
+    return 'Nespecificat';
+  };
+
+  const getGenderIcon = (gender: string) => {
+    if (gender === 'M' || gender === 'Masculin') return 'male';
+    if (gender === 'F' || gender === 'Feminin') return 'female';
+    return 'person';
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: containerBg }]}>
@@ -366,25 +378,115 @@ export default function ProfilScreen() {
               ]}
             />
 
+            {/* ✅ IMPROVED: Gender Selector with Buttons */}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Gen</Text>
               {isEditing ? (
-                <TextInput
-                  style={[
-                    styles.infoInput,
-                    { backgroundColor: inputBg, color: textColor },
-                  ]}
-                  value={editData.gender}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, gender: text })
-                  }
-                  placeholder="M/F"
-                  placeholderTextColor={placeholderColor}
-                />
+                <View style={styles.genderSelector}>
+                  <TouchableOpacity
+                    style={[
+                      styles.genderButton,
+                      {
+                        backgroundColor:
+                          editData.gender === 'M' ||
+                          editData.gender === 'Masculin'
+                            ? '#007AFF'
+                            : isDark
+                            ? '#2C2C2E'
+                            : '#F2F2F7',
+                      },
+                    ]}
+                    onPress={() => setEditData({ ...editData, gender: 'M' })}
+                  >
+                    <MaterialIcons
+                      name="male"
+                      size={20}
+                      color={
+                        editData.gender === 'M' ||
+                        editData.gender === 'Masculin'
+                          ? '#FFFFFF'
+                          : '#8E8E93'
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.genderButtonText,
+                        {
+                          color:
+                            editData.gender === 'M' ||
+                            editData.gender === 'Masculin'
+                              ? '#FFFFFF'
+                              : '#8E8E93',
+                        },
+                      ]}
+                    >
+                      M
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.genderButton,
+                      {
+                        backgroundColor:
+                          editData.gender === 'F' ||
+                          editData.gender === 'Feminin'
+                            ? '#FF2D55'
+                            : isDark
+                            ? '#2C2C2E'
+                            : '#F2F2F7',
+                      },
+                    ]}
+                    onPress={() => setEditData({ ...editData, gender: 'F' })}
+                  >
+                    <MaterialIcons
+                      name="female"
+                      size={20}
+                      color={
+                        editData.gender === 'F' || editData.gender === 'Feminin'
+                          ? '#FFFFFF'
+                          : '#8E8E93'
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.genderButtonText,
+                        {
+                          color:
+                            editData.gender === 'F' ||
+                            editData.gender === 'Feminin'
+                              ? '#FFFFFF'
+                              : '#8E8E93',
+                        },
+                      ]}
+                    >
+                      F
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               ) : (
-                <Text style={[styles.infoValue, { color: textColor }]}>
-                  {userData.gender || 'Nespecificat'}
-                </Text>
+                <View style={styles.genderDisplay}>
+                  <MaterialIcons
+                    name={getGenderIcon(userData.gender) as any}
+                    size={18}
+                    color={
+                      userData.gender === 'M' || userData.gender === 'Masculin'
+                        ? '#007AFF'
+                        : userData.gender === 'F' ||
+                          userData.gender === 'Feminin'
+                        ? '#FF2D55'
+                        : '#8E8E93'
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.infoValue,
+                      { color: textColor, marginLeft: 6 },
+                    ]}
+                  >
+                    {getGenderDisplay(userData.gender)}
+                  </Text>
+                </View>
               )}
             </View>
           </View>
@@ -639,6 +741,28 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   infoDivider: { height: 1, marginHorizontal: 16 },
+
+  // ✅ Gender Selector Styles
+  genderSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  genderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  genderButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  genderDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
   // Buttons
   actionButtons: {
