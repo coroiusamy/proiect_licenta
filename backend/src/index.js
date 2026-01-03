@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes.js';
 import analysisRoutes from './routes/analysis.routes.js';
 import userRoutes from './routes/user.routes.js';
+import priceRoutes from './routes/price.routes.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ const PORT = process.env.PORT || 3000;
 app.use('/api/auth', authRoutes);
 app.use('/api/analyses', analysisRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/prices', priceRoutes);
 
 // Pornire server
 app.listen(PORT, () => {
