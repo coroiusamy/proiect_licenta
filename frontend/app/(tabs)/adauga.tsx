@@ -130,6 +130,7 @@ export default function AdaugaScreen() {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data',
           },
+          timeout: 60000,
         }
       );
 
