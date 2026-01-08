@@ -73,3 +73,18 @@ model AnalysisResult {
   
   notes String? @db.Text // Comentariu opțional
 }
+
+// Prețuri externe pentru Comparator (Cache)
+model ExternalPrice {
+  id           Int      @id @default(autoincrement())
+  clinicName   String   // "Synevo", "Regina Maria", "Sante", etc.
+  analysisName String   // Numele NOSTRU standard (ex: "Glicemie")
+  originalName String   // Numele LOR de pe site (ex: "Glucoza serica")
+  price        Float
+  currency     String   @default("RON")
+  url          String?  // Link direct către analiză
+  lastUpdated  DateTime @default(now())
+
+  // Cheie unică: O clinică are un singur preț pentru un tip de analiză
+  @@unique([clinicName, analysisName])
+}

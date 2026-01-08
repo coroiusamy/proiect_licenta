@@ -366,6 +366,13 @@ export default function HomeScreen() {
               color="#34C759"
               isDark={isDark}
             />
+            <QuickActionButton
+              icon="savings"
+              label="Prețuri"
+              onPress={() => router.push('/comparator')}
+              color="#FF2D55"
+              isDark={isDark}
+            />
           </View>
         </View>
 
