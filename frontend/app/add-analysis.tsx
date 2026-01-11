@@ -234,10 +234,13 @@ export default function AddAnalysisScreen() {
                   placeholderTextColor={placeholderColor}
                   keyboardType={isNumeric ? 'decimal-pad' : 'default'}
                 />
-                {typeInfo.refMin && typeInfo.refMax && (
+
+                {/* --- FIX AICI: Verificare cu != null pentru a accepta 0 --- */}
+                {typeInfo.refMin != null && typeInfo.refMax != null && (
                   <Text style={styles.hint}>
-                    Normal: {typeInfo.refMin} - {typeInfo.refMax}{' '}
-                    {typeInfo.unit}
+                    {`Normal: ${typeInfo.refMin} - ${typeInfo.refMax}${
+                      typeInfo.unit ? ` ${typeInfo.unit}` : ''
+                    }`}
                   </Text>
                 )}
               </View>
