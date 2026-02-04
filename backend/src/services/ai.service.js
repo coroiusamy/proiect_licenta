@@ -6,11 +6,36 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const AI_MODEL = 'doctor-llama';
 const ollama = new Ollama({ host: 'http://127.0.0.1:11434' });
 
 const kbPath = path.join(__dirname, '../../data/medical_kb.json');
 let knowledgeBase = [];
 
+// ============================================
+// HELPER: Salvare Dataset
+// ============================================
+const saveToDataset = (userPrompt, assistantResponse) => {
+  try {
+    const datasetPath = path.join(
+      process.cwd(),
+      'dataset_wellness_ollama.jsonl'
+    );
+    const entry = {
+      messages: [
+        { role: 'user', content: userPrompt },
+        { role: 'assistant', content: assistantResponse },
+      ],
+    };
+    fs.appendFileSync(datasetPath, JSON.stringify(entry) + '\n');
+  } catch (err) {
+    console.error('⚠️ [Dataset] Eroare la salvare:', err.message);
+  }
+};
+
+// ============================================
+// Încărcare Knowledge Base
+// ============================================
 try {
   const rawData = fs.readFileSync(kbPath, 'utf8');
   knowledgeBase = JSON.parse(rawData);
@@ -21,6 +46,9 @@ try {
   console.error('❌ RAG: Nu s-a putut încărca medical_kb.json', err);
 }
 
+// ============================================
+// Retrieve Context din Knowledge Base
+// ============================================
 function retrieveContext(analysisName) {
   const normalize = (str) => str.toLowerCase().trim();
   const target = normalize(analysisName);
@@ -30,44 +58,95 @@ function retrieveContext(analysisName) {
   return found ? found.info : null;
 }
 
-// Detectare SEVERITATE bazată pe cât de departe e de normal
+// ============================================
+// SEVERITATE ÎMBUNĂTĂȚITĂ - Mai nuanțată
+// ============================================
 function detectSeverity(value, refMin, refMax, status) {
-  if (status === 'normal') return 'NORMAL';
+  if (status === 'normal')
+    return { level: 'NORMAL', urgency: 'none', tone: 'pozitiv' };
 
   const numValue = parseFloat(value);
 
   if (status === 'high' && refMax) {
-    const timesOverMax = numValue / refMax;
+    const ratio = numValue / refMax;
 
-    // CRITIC: >3x peste normal
-    if (timesOverMax >= 3) return 'CRITIC';
-
-    // SEVER: >2x peste normal
-    if (timesOverMax >= 2) return 'SEVER';
-
-    // RIDICAT: >1.5x peste normal
-    if (timesOverMax >= 1.5) return 'RIDICAT';
-
-    // UȘOR CRESCUT: între refMax și 1.5x
-    return 'UȘOR CRESCUT';
+    if (ratio >= 3) {
+      return { level: 'CRITIC', urgency: 'urgenta', tone: 'serios' };
+    }
+    if (ratio >= 2) {
+      return { level: 'RIDICAT', urgency: 'curand', tone: 'atent' };
+    }
+    if (ratio >= 1.5) {
+      return { level: 'MODERAT', urgency: 'programare', tone: 'calm_atent' };
+    }
+    // ratio < 1.5 - doar ușor peste normal
+    return { level: 'USOR_CRESCUT', urgency: 'mentionare', tone: 'calm' };
   }
 
   if (status === 'low' && refMin) {
-    const percentBelowMin = (refMin - numValue) / refMin;
+    const percentBelow = (refMin - numValue) / refMin;
 
-    // CRITIC: <50% din minim
-    if (percentBelowMin >= 0.5) return 'CRITIC';
-
-    // SEVER: <70% din minim
-    if (percentBelowMin >= 0.3) return 'SEVER';
-
-    // SCĂZUT
-    return 'SCĂZUT';
+    if (percentBelow >= 0.5) {
+      return { level: 'CRITIC', urgency: 'urgenta', tone: 'serios' };
+    }
+    if (percentBelow >= 0.3) {
+      return { level: 'RIDICAT', urgency: 'curand', tone: 'atent' };
+    }
+    if (percentBelow >= 0.15) {
+      return { level: 'MODERAT', urgency: 'programare', tone: 'calm_atent' };
+    }
+    return { level: 'USOR_SCAZUT', urgency: 'mentionare', tone: 'calm' };
   }
 
-  return status === 'high' ? 'CRESCUT' : 'SCĂZUT';
+  // Fallback
+  return {
+    level: status === 'high' ? 'CRESCUT' : 'SCAZUT',
+    urgency: 'programare',
+    tone: 'calm_atent',
+  };
 }
 
+// ============================================
+// Generare descriere simplă a analizei
+// ============================================
+function getSimpleDescription(analysisName, contextData) {
+  // Descrieri simple pentru analize comune
+  const descriptions = {
+    bilirubina: 'arată cum procesează ficatul anumite substanțe',
+    glicemie: 'arată nivelul de zahăr din sânge',
+    glucoza: 'arată nivelul de zahăr din sânge',
+    colesterol: 'măsoară grăsimile din sânge',
+    hemoglobina: 'arată capacitatea sângelui de a transporta oxigen',
+    creatinina: 'indică cum funcționează rinichii',
+    alt: 'este un marker pentru funcția ficatului',
+    ast: 'este un marker pentru funcția ficatului',
+    trigliceride: 'măsoară un tip de grăsime din sânge',
+    leucocite: 'arată activitatea sistemului imunitar',
+    trombocite: 'sunt implicate în coagularea sângelui',
+    fier: 'este important pentru producerea globulelor roșii',
+  };
+
+  const nameLower = analysisName.toLowerCase();
+  for (const [key, desc] of Object.entries(descriptions)) {
+    if (nameLower.includes(key)) return desc;
+  }
+
+  // Folosește descrierea din KB dacă există
+  if (contextData?.descriere) {
+    // Simplificăm descrierea dacă e prea lungă
+    const desc = contextData.descriere;
+    if (desc.length > 100) {
+      return desc.split('.')[0]; // Prima propoziție
+    }
+    return desc;
+  }
+
+  return 'este un indicator monitorizat în analizele de sânge';
+}
+
+// ============================================
+// FUNCȚIA PRINCIPALĂ - REFĂCUTĂ
+// ============================================
 export async function generateWellnessAdvice(
   analysisName,
   value,
@@ -77,171 +156,221 @@ export async function generateWellnessAdvice(
   refMax = null
 ) {
   const contextData = retrieveContext(analysisName);
-
-  // Detectare SEVERITATE
   const severity = detectSeverity(value, refMin, refMax, status);
+  const simpleDesc = getSimpleDescription(analysisName, contextData);
 
   console.log(
-    `🚨 [AI] Severitate detectată: ${severity} (valoare: ${value}, refMax: ${refMax})`
+    `📊 [AI] Severitate: ${severity.level} | Ton: ${severity.tone} | Urgență: ${severity.urgency}`
   );
 
-  // RĂSPUNS HARDCODAT pentru cazuri CRITICE (fără AI - prea important!)
-  if (severity === 'CRITIC') {
-    let criticalMessage = '';
+  // ============================================
+  // CAZURI CRITICE - Răspuns hardcodat dar EMPATIC
+  // ============================================
+  if (severity.level === 'CRITIC') {
+    const criticalMessage =
+      status === 'high'
+        ? `Te rog să acorzi atenție acestui rezultat. Valoarea ta de ${value} ${unit} pentru ${analysisName} este semnificativ peste intervalul normal (${refMax} ${unit}). Deși nu pot pune un diagnostic, acest nivel necesită evaluare medicală promptă pentru a înțelege cauza și a primi îndrumare adecvată. Te încurajez să contactezi medicul tău sau să mergi la o consultație cât mai curând posibil - nu pentru a te speria, ci pentru a primi atenția potrivită situației. Între timp, hidratează-te bine și odihnește-te.`
+        : `Te rog să acorzi atenție acestui rezultat. Valoarea ta de ${value} ${unit} pentru ${analysisName} este sub intervalul normal (${refMin} ${unit}). Este important să discuți cu un medic pentru a înțelege ce ar putea cauza acest rezultat și cum poți fi ajutat/ă. Te încurajez să programezi o consultație cât mai curând.`;
 
-    if (status === 'high') {
-      criticalMessage = `🚨 URGENȚĂ MEDICALĂ SEVERĂ! 🚨
-
-Rezultatul tău de ${value} ${unit} este EXTREM DE RIDICAT (${Math.round(
-        parseFloat(value) / refMax
-      )}x peste limita maximă normală de ${refMax} ${unit}).
-
-⚠️ RISC IMEDIAT:
-${
-  analysisName.toLowerCase().includes('glice') ||
-  analysisName.toLowerCase().includes('glucoz')
-    ? '- Risc de COMĂ DIABETICĂ (cetoacidoză)\n- Deshidratare severă\n- Deces dacă nu se tratează URGENT'
-    : '- Risc vital\n- Necesită intervenție medicală imediată'
-}
-
-🚑 ACȚIUNE NECESARĂ:
-✅ Mergi IMEDIAT la URGENȚE (112)
-✅ NU aștepta programare
-✅ NU încerca tratament acasă
-
-Acesta este un sfat informativ. Situația ta necesită evaluare medicală URGENTĂ!`;
-    } else {
-      criticalMessage = `🚨 URGENȚĂ MEDICALĂ! 🚨
-
-Rezultatul tău de ${value} ${unit} este EXTREM DE SCĂZUT (sub ${refMin} ${unit}).
-
-⚠️ RISC IMEDIAT de complicații severe.
-
-🚑 Mergi IMEDIAT la URGENȚE sau sună 112!
-
-Acesta este un sfat informativ. Situația ta necesită evaluare medicală URGENTĂ!`;
-    }
-
-    return criticalMessage;
+    const disclaimer =
+      '\n\nAcest mesaj are scop informativ și nu înlocuiește consultul medical.';
+    saveToDataset(`CRITIC: ${analysisName} = ${value}`, criticalMessage);
+    return criticalMessage + disclaimer;
   }
 
-  // Pentru cazuri non-critice, folosim AI cu prompt îmbunătățit
-  let contextText = '';
-  if (contextData) {
-    const statusInfo =
-      status === 'low' ? contextData.cauze_scazut : contextData.cauze_crescut;
+  // ============================================
+  // PROMPT ÎMBUNĂTĂȚIT - Focus pe empatie, fără diagnostic
+  // ============================================
 
-    contextText = `
-CONTEXT MEDICAL VALIDAT:
-${contextData.descriere}
-
-INTERVAL NORMAL: ${contextData.valori_normale}
-${
-  contextData.valori_critice
-    ? `⚠️ VALORI CRITICE: ${contextData.valori_critice}`
-    : ''
-}
-
-${
-  status !== 'normal'
-    ? `CAUZE ${status === 'low' ? 'SCĂZUT' : 'CRESCUT'}: ${statusInfo}`
-    : ''
-}
-
-SFATURI: ${contextData.sfaturi}
-`;
-  }
-
-  // Prompt adaptat la SEVERITATE
-  const severityPrompts = {
-    SEVER: `
-🚨 ATENȚIE! Valoarea este FOARTE RIDICATĂ!
-
-TREBUIE SĂ SPUI:
-✅ "Rezultatul de ${value} ${unit} este SEMNIFICATIV PESTE normal (${refMax} ${unit})"
-✅ "Această situație este SERIOASĂ și necesită atenție medicală URGENTĂ"
-✅ "Consultă un medic CÂT MAI CURÂND POSIBIL - NU amâna!"
-✅ Menționează riscuri specifice și acțiuni URGENTE
-`,
-    RIDICAT: `
-⚠️ Valoarea este CONSIDERABIL crescută!
-
-TREBUIE SĂ SPUI:
-✅ "Rezultatul de ${value} ${unit} este PESTE intervalul normal (${refMax} ${unit})"
-✅ "Este important să consulți medicul în zilele următoare"
-✅ Sfaturi concrete de management
-`,
-    'UȘOR CRESCUT': `
-Valoarea este ușor crescută.
-
-TREBUIE SĂ SPUI:
-✅ "Rezultatul de ${value} ${unit} este ușor peste limita normală"
-✅ "Monitorizează și consultă medicul pentru evaluare"
-`,
+  // Determinare ton și formulări bazate pe severitate
+  const toneGuidance = {
+    NORMAL: {
+      greeting: 'Bună!',
+      valueDesc: 'în intervalul normal',
+      action: 'Continuă cu obiceiurile sănătoase!',
+    },
+    USOR_CRESCUT: {
+      greeting: 'Bună!',
+      valueDesc: 'puțin peste intervalul tipic',
+      action: 'Menționează acest rezultat medicului la următoarea vizită.',
+    },
+    USOR_SCAZUT: {
+      greeting: 'Bună!',
+      valueDesc: 'puțin sub intervalul tipic',
+      action: 'Menționează acest rezultat medicului la următoarea vizită.',
+    },
+    MODERAT: {
+      greeting: 'Bună!',
+      valueDesc: 'moderat în afara intervalului normal',
+      action:
+        'Ar fi bine să programezi o vizită la medic în următoarele săptămâni.',
+    },
+    RIDICAT: {
+      greeting: 'Bună,',
+      valueDesc: 'destul de departe de intervalul normal',
+      action: 'Te încurajez să discuți cu medicul în curând pentru îndrumare.',
+    },
   };
 
-  const prompt = `Tu ești asistent medical educațional. Răspunzi în ROMÂNĂ.
+  const tone = toneGuidance[severity.level] || toneGuidance['MODERAT'];
 
-SITUAȚIA PACIENTULUI:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔬 Analiză: ${analysisName}
-📊 Valoare: ${value} ${unit}
-⚖️ Status: ${
+  const prompt = `Generează un sfat de wellness în ROMÂNĂ pentru:
+
+CONTEXT:
+- Analiză: ${analysisName} (${simpleDesc})
+- Valoare: ${value} ${unit}
+- Interval normal: ${refMin || '?'} - ${refMax || '?'} ${unit}
+- Status: ${
     status === 'normal'
-      ? 'NORMAL ✅'
-      : status === 'low'
-      ? 'SCĂZUT ⚠️'
-      : 'CRESCUT 🚨'
+      ? 'normal'
+      : status === 'high'
+      ? 'peste normal'
+      : 'sub normal'
   }
-🚨 Severitate: ${severity}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Nivel: ${severity.level} (ton: ${severity.tone})
 
-${contextText}
+CERINȚE STRICTE:
+1. Începe cu "${tone.greeting}"
+2. Explică simplu CE măsoară această analiză (o propoziție)
+3. Menționează că valoarea e "${tone.valueDesc}" - FĂRĂ dramatizare
+4. Oferă context liniștitor (variații normale, cauze benigne posibile)
+5. Încheie cu: "${tone.action}"
 
-${severityPrompts[severity] || ''}
+INTERZIS ABSOLUT:
+❌ "indică boală/problemă X" - NU pune diagnostic
+❌ Liste de boli (hepatită, ciroză, etc.)
+❌ Termeni medicali complicați
+❌ Ton alarmist sau urgent (pentru acest nivel)
+❌ Bullet points sau formatare
+❌ Mai mult de 4 propoziții
 
-INSTRUCȚIUNI STRICTE:
-1. SALUTĂ prietenos dar SERIOS (ținând cont de severitate)
-2. SPUNE CLAR cât de departe e de normal și ce înseamnă
-3. Pentru SEVERITATE RIDICATĂ: subliniază URGENȚA consultului medical
-4. Oferă 2-3 sfaturi CONCRETE și ACȚIONABILE
-5. ÎNCHEIE cu îndrumare clară despre pașii următori
+OBLIGATORIU:
+✅ Ton cald, ca un prieten informat
+✅ Un singur paragraf, 3-4 propoziții
+✅ Română corectă gramatical
+✅ Context liniștitor înainte de recomandare
 
-REGULI CRITICE:
-❌ NU pune NICIODATĂ diagnostic
-❌ NU minimaliza situația dacă e SEVERĂ
-❌ NU spune "totul e bine" pentru severitate ridicată
-✅ FII REALIST despre gravitate
-✅ ÎNCURAJEAZĂ consultul medical când e necesar
+Răspunde ACUM (3-4 propoziții, un paragraf):`;
 
-RĂSPUNS (3-5 propoziții, adaptat la severitate):`;
-
+  // ============================================
+  // Apel AI
+  // ============================================
   try {
     const response = await ollama.chat({
-      model: 'llama3.2',
+      model: AI_MODEL,
       messages: [{ role: 'user', content: prompt }],
       options: {
         temperature: 0.3,
-        top_p: 0.8,
+        top_p: 0.9,
         repeat_penalty: 1.2,
+        num_predict: 250,
       },
     });
 
     let advice = response.message.content.trim();
 
-    // Adaugă disclaimer
-    const finalAdvice = `${advice}\n\nAcesta este un sfat informativ. Consultă medicul.`;
+    // Post-procesare: elimină formatare nedorită
+    advice = advice
+      .replace(/\*\*/g, '')
+      .replace(/__/g, '')
+      .replace(/^[-•]\s*/gm, '')
+      .replace(/^\d+\.\s*/gm, '')
+      .trim();
 
-    console.log(`✅ [AI] Sfat generat (severitate: ${severity})`);
-    return finalAdvice;
-  } catch (error) {
-    console.error('❌ [AI] Eroare Ollama:', error);
+    // Verificare și curățare: elimină referințe la boli specifice
+    const forbiddenTerms = [
+      'hepatită',
+      'ciroză',
+      'tumoră',
+      'cancer',
+      'diabet',
+      'insuficiență',
+      'boală',
+      'afecțiune gravă',
+      'patologie',
+    ];
 
-    // FALLBACK bazat pe severitate
-    if (severity === 'SEVER') {
-      return `Rezultatul de ${value} ${unit} este SEMNIFICATIV peste normal. Consultă medicul URGENT pentru evaluare.\n\nAcesta este un sfat informativ. Consultă medicul.`;
+    let needsRegeneration = false;
+    for (const term of forbiddenTerms) {
+      if (advice.toLowerCase().includes(term)) {
+        console.warn(
+          `⚠️ [AI] Răspuns conține termen interzis: "${term}". Folosesc fallback.`
+        );
+        needsRegeneration = true;
+        break;
+      }
     }
 
-    return null;
+    if (needsRegeneration) {
+      advice = generateFallbackAdvice(
+        analysisName,
+        value,
+        unit,
+        status,
+        refMin,
+        refMax,
+        severity,
+        simpleDesc
+      );
+    }
+
+    const disclaimer =
+      '\n\nAcest mesaj are scop informativ și nu înlocuiește consultul medical.';
+
+    console.log(`✅ [AI] Sfat generat pentru ${analysisName}`);
+    saveToDataset(prompt, advice);
+
+    return advice + disclaimer;
+  } catch (error) {
+    console.error('❌ [AI] Eroare Ollama:', error);
+    const fallback = generateFallbackAdvice(
+      analysisName,
+      value,
+      unit,
+      status,
+      refMin,
+      refMax,
+      severity,
+      simpleDesc
+    );
+    return (
+      fallback +
+      '\n\nAcest mesaj are scop informativ și nu înlocuiește consultul medical.'
+    );
+  }
+}
+
+// ============================================
+// FALLBACK EMPATIC - Fără AI
+// ============================================
+function generateFallbackAdvice(
+  analysisName,
+  value,
+  unit,
+  status,
+  refMin,
+  refMax,
+  severity,
+  simpleDesc
+) {
+  const statusText = status === 'high' ? 'peste' : 'sub';
+  const refValue = status === 'high' ? refMax : refMin;
+
+  switch (severity.level) {
+    case 'NORMAL':
+      return `Bună! ${analysisName} ${simpleDesc}, iar valoarea ta de ${value} ${unit} este în intervalul normal. Asta înseamnă că totul arată bine din acest punct de vedere. Continuă cu obiceiurile tale sănătoase!`;
+
+    case 'USOR_CRESCUT':
+    case 'USOR_SCAZUT':
+      return `Bună! ${analysisName} ${simpleDesc}. Valoarea ta de ${value} ${unit} este puțin ${statusText} intervalul tipic (${refValue} ${unit}), dar diferența e mică și poate avea multe explicații - de la variații normale zilnice, la alimentație sau stres. Menționează acest rezultat medicului la următoarea vizită de rutină pentru a vedea dacă merită monitorizat.`;
+
+    case 'MODERAT':
+      return `Bună! ${analysisName} ${simpleDesc}. Valoarea ta de ${value} ${unit} este moderat ${statusText} intervalul normal, ceea ce merită puțină atenție, dar nu e motiv de panică - multe cauze pot explica acest lucru, inclusiv factori temporari. Ar fi bine să programezi o vizită la medic în următoarele săptămâni pentru a discuta și a vedea dacă e nevoie de investigații suplimentare.`;
+
+    case 'RIDICAT':
+      return `Bună. ${analysisName} ${simpleDesc}, iar valoarea ta de ${value} ${unit} este destul de departe de intervalul normal. Fără a sări la concluzii, acest rezultat merită atenție și o discuție cu medicul în curând pentru a înțelege cauza și a primi îndrumare potrivită. Nu te speria, dar nici nu amâna prea mult consultul.`;
+
+    default:
+      return `Bună! Am văzut rezultatul tău pentru ${analysisName} (${value} ${unit}). Pentru a înțelege mai bine ce înseamnă pentru tine personal, cel mai bine ar fi să discuți cu medicul care poate pune rezultatul în contextul istoricului tău medical.`;
   }
 }

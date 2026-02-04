@@ -17,6 +17,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import Toast from 'react-native-toast-message';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -65,11 +66,38 @@ export default function ComparatorScreen() {
 
   // Căutare
   const searchPrices = async () => {
-    // Single mode
-    if (mode === 'single' && !query.trim()) return;
+    // Single mode - verifică că ai query
+    if (mode === 'single' && !query.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Lipsește numele',
+        text2: 'Te rog să introduci o analiză pentru căutare',
+      });
+      return;
+    }
 
-    // Batch mode
-    if (mode === 'batch' && selectedAnalyses.length === 0) return;
+    // Batch mode - verifică că ai cel puțin o analiză
+    let finalAnalyses = [...selectedAnalyses];
+
+    // Auto-add: Dacă ai scris ceva în input dar ai uitat să dai +, îl adăugăm noi
+    if (
+      mode === 'batch' &&
+      query.trim() &&
+      !selectedAnalyses.includes(query.trim())
+    ) {
+      finalAnalyses.push(query.trim());
+      setSelectedAnalyses(finalAnalyses); // Update state
+      setQuery(''); // Clear input
+    }
+
+    if (mode === 'batch' && finalAnalyses.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Lipsesc analizele',
+        text2: 'Adaugă cel puțin o analiză pentru a compara pachete',
+      });
+      return;
+    }
 
     setLoading(true);
     setHasSearched(true);
@@ -87,14 +115,30 @@ export default function ComparatorScreen() {
       } else {
         // Batch (multiple analyses)
         response = await axios.get(`${API_URL}/api/prices`, {
-          params: { analysisNames: selectedAnalyses.join(',') },
+          params: { analysisNames: finalAnalyses.join(',') },
           headers: { Authorization: `Bearer ${token}` },
         });
       }
 
       setResults(response.data.data || []);
+
+      // Success toast (optional, doar pentru feedback pozitiv)
+      if (response.data.data && response.data.data.length > 0) {
+        Toast.show({
+          type: 'success',
+          text1: mode === 'single' ? 'Prețuri găsite!' : 'Pachete găsite!',
+          text2: `${response.data.data.length} ${
+            mode === 'single' ? 'rezultate' : 'pachete'
+          } disponibile`,
+        });
+      }
     } catch (error) {
       console.error(error);
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Nu am putut prelua prețurile. Verifică conexiunea.',
+      });
     } finally {
       setLoading(false);
     }
@@ -176,6 +220,11 @@ export default function ComparatorScreen() {
     const currentPrice = item?.totalPrice || 0;
     const savings = index > 0 ? currentPrice - firstPrice : 0;
 
+    // Verifică dacă pachetul e complet
+    const requestedCount = selectedAnalyses.length;
+    const foundCount = item.analysisCount || 0;
+    const isComplete = foundCount === requestedCount;
+
     return (
       <TouchableOpacity
         style={[styles.card, { backgroundColor: cardBg }]}
@@ -192,8 +241,17 @@ export default function ComparatorScreen() {
           <Text style={[styles.clinicName, { color: clinicColor }]}>
             {item.clinic}
           </Text>
-          <Text style={[styles.packageInfo, { color: textColor }]}>
-            Pachet {item.analysisCount || 0} analize
+          <Text
+            style={[
+              styles.packageInfo,
+              { color: isComplete ? textColor : '#FF9500' },
+            ]}
+          >
+            {isComplete
+              ? `Pachet complet (${foundCount} ${
+                  foundCount === 1 ? 'analiză' : 'analize'
+                })`
+              : `Pachet parțial (${foundCount}/${requestedCount})`}
           </Text>
           {savings > 0 && (
             <Text style={styles.savingsText}>
@@ -456,6 +514,41 @@ export default function ComparatorScreen() {
                 Lei TOTAL
               </Text>
 
+              {/* Status pachet */}
+              {selectedPackage && selectedAnalyses.length > 0 && (
+                <View style={styles.modalStatusBadge}>
+                  <MaterialIcons
+                    name={
+                      selectedPackage.analysisCount === selectedAnalyses.length
+                        ? 'check-circle'
+                        : 'info'
+                    }
+                    size={16}
+                    color={
+                      selectedPackage.analysisCount === selectedAnalyses.length
+                        ? '#34C759'
+                        : '#FF9500'
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.modalStatusText,
+                      {
+                        color:
+                          selectedPackage.analysisCount ===
+                          selectedAnalyses.length
+                            ? '#34C759'
+                            : '#FF9500',
+                      },
+                    ]}
+                  >
+                    {selectedPackage.analysisCount === selectedAnalyses.length
+                      ? 'Pachet complet'
+                      : `Pachet parțial (${selectedPackage.analysisCount}/${selectedAnalyses.length})`}
+                  </Text>
+                </View>
+              )}
+
               <Text style={[styles.modalSubtitle, { color: textColor }]}>
                 {selectedPackage?.analysisCount || 0} analize incluse:
               </Text>
@@ -490,6 +583,9 @@ export default function ComparatorScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Toast pentru notificări */}
+      <Toast />
     </SafeAreaView>
   );
 }
@@ -692,6 +788,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+  },
+  modalStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: 'center',
+    borderRadius: 20,
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+  },
+  modalStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   modalSubtitle: { fontSize: 16, fontWeight: '600', marginBottom: 15 },
   modalItem: {
