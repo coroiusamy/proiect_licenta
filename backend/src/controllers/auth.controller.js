@@ -28,12 +28,12 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
-      data: { 
-        email, 
-        password: hashedPassword, 
-        firstName, 
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
         lastName,
-        authProvider: 'local'
+        authProvider: 'local',
       },
     });
 
@@ -60,7 +60,9 @@ export const login = async (req, res) => {
     }
 
     if (user.authProvider === 'google') {
-      return res.status(400).json({ message: 'Folosește Google pentru a te autentifica.' });
+      return res
+        .status(400)
+        .json({ message: 'Folosește Google pentru a te autentifica.' });
     }
 
     if (!user.password || !(await bcrypt.compare(password, user.password))) {
@@ -70,13 +72,11 @@ export const login = async (req, res) => {
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: TOKEN_EXPIRATION,
     });
-    res
-      .status(200)
-      .json({
-        message: 'Logat!',
-        token,
-        user: { email: user.email, firstName: user.firstName },
-      });
+    res.status(200).json({
+      message: 'Logat!',
+      token,
+      user: { email: user.email, firstName: user.firstName },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Eroare server.' });
@@ -87,7 +87,7 @@ export const login = async (req, res) => {
 export const googleAuth = async (req, res) => {
   try {
     const { accessToken, code, redirectUri, codeVerifier } = req.body;
-    
+
     let googleAccessToken = accessToken;
 
     if (code && !accessToken) {
@@ -102,14 +102,16 @@ export const googleAuth = async (req, res) => {
           code_verifier: codeVerifier,
         }),
       });
-      
+
       const tokenData = await tokenResponse.json();
-      
+
       if (tokenData.error) {
         console.error('Google token exchange error:', tokenData);
-        return res.status(401).json({ message: 'Eroare la autentificarea Google.' });
+        return res
+          .status(401)
+          .json({ message: 'Eroare la autentificarea Google.' });
       }
-      
+
       googleAccessToken = tokenData.access_token;
     }
 
@@ -117,16 +119,24 @@ export const googleAuth = async (req, res) => {
       return res.status(400).json({ message: 'Token Google lipsă.' });
     }
 
-    const response = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo`, {
-      headers: { Authorization: `Bearer ${googleAccessToken}` },
-    });
+    const response = await fetch(
+      `https://www.googleapis.com/oauth2/v2/userinfo`,
+      {
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
+      },
+    );
     const payload = await response.json();
 
     if (payload.error || !payload.email) {
       return res.status(401).json({ message: 'Token Google invalid.' });
     }
 
-    const { id: googleId, email, given_name: firstName, family_name: lastName } = payload;
+    const {
+      id: googleId,
+      email,
+      given_name: firstName,
+      family_name: lastName,
+    } = payload;
 
     let user = await prisma.user.findUnique({ where: { googleId } });
 
@@ -135,8 +145,9 @@ export const googleAuth = async (req, res) => {
 
       if (user) {
         if (user.authProvider === 'local') {
-          return res.status(409).json({ 
-            message: 'Există deja un cont cu acest email. Autentifică-te cu parola.' 
+          return res.status(409).json({
+            message:
+              'Există deja un cont cu acest email. Autentifică-te cu parola.',
           });
         }
         user = await prisma.user.update({

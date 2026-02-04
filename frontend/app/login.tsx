@@ -45,7 +45,7 @@ export default function LoginScreen() {
       const codeChallenge = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         codeVerifier,
-        { encoding: Crypto.CryptoEncoding.BASE64 }
+        { encoding: Crypto.CryptoEncoding.BASE64 },
       );
       const codeChallengeFormatted = codeChallenge
         .replace(/\+/g, '-')
@@ -62,7 +62,10 @@ export default function LoginScreen() {
         `&code_challenge=${codeChallengeFormatted}` +
         `&code_challenge_method=S256`;
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, REDIRECT_URI);
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        REDIRECT_URI,
+      );
 
       if (result.type === 'success' && result.url) {
         const url = new URL(result.url);
@@ -131,7 +134,10 @@ export default function LoginScreen() {
         <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
 
         <TextInput
-          style={[styles.input, { backgroundColor: inputBg, color: inputColor }]}
+          style={[
+            styles.input,
+            { backgroundColor: inputBg, color: inputColor },
+          ]}
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
@@ -143,7 +149,10 @@ export default function LoginScreen() {
         />
 
         <TextInput
-          style={[styles.input, { backgroundColor: inputBg, color: inputColor }]}
+          style={[
+            styles.input,
+            { backgroundColor: inputBg, color: inputColor },
+          ]}
           placeholder="Parolă"
           value={password}
           onChangeText={setPassword}
@@ -159,7 +168,9 @@ export default function LoginScreen() {
           onPress={() => router.push('/forgot-password')}
           disabled={isLoading}
         >
-          <ThemedText style={styles.forgotPasswordText}>Ai uitat parola?</ThemedText>
+          <ThemedText style={styles.forgotPasswordText}>
+            Ai uitat parola?
+          </ThemedText>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -175,13 +186,26 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <View style={styles.dividerContainer}>
-          <View style={[styles.dividerLine, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+          <View
+            style={[
+              styles.dividerLine,
+              { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+            ]}
+          />
           <ThemedText style={styles.dividerText}>sau</ThemedText>
-          <View style={[styles.dividerLine, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+          <View
+            style={[
+              styles.dividerLine,
+              { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+            ]}
+          />
         </View>
 
         <TouchableOpacity
-          style={[styles.googleButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          style={[
+            styles.googleButton,
+            { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' },
+          ]}
           onPress={handleGoogleSignIn}
           disabled={isGoogleLoading || isLoading}
         >
@@ -190,7 +214,9 @@ export default function LoginScreen() {
           ) : (
             <>
               <MaterialIcons name="g-mobiledata" size={28} color="#4285F4" />
-              <ThemedText style={styles.googleButtonText}>Continuă cu Google</ThemedText>
+              <ThemedText style={styles.googleButtonText}>
+                Continuă cu Google
+              </ThemedText>
             </>
           )}
         </TouchableOpacity>
