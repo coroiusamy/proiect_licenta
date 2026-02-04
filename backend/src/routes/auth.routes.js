@@ -4,6 +4,7 @@ import {
   login,
   forgotPassword,
   resetPassword,
+  googleAuth,
 } from '../controllers/auth.controller.js';
 
 const router = Router();

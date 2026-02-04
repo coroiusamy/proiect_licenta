@@ -8,17 +8,24 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  View,
 } from 'react-native';
 import { router } from 'expo-router';
 import axios, { isAxiosError } from 'axios';
 import Toast from 'react-native-toast-message';
+import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { useAuth } from '@/context/AuthContext';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { LinearGradient } from 'expo-linear-gradient';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+const REDIRECT_URI = 'https://auth.expo.io/@samycoroiu/frontend';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -28,6 +35,58 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const state = Crypto.randomUUID();
+      const codeVerifier = Crypto.randomUUID() + Crypto.randomUUID();
+      const codeChallenge = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        codeVerifier,
+        { encoding: Crypto.CryptoEncoding.BASE64 }
+      );
+      const codeChallengeFormatted = codeChallenge
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${GOOGLE_CLIENT_ID}` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent('openid profile email')}` +
+        `&state=${state}` +
+        `&code_challenge=${codeChallengeFormatted}` +
+        `&code_challenge_method=S256`;
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, REDIRECT_URI);
+
+      if (result.type === 'success' && result.url) {
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+
+        if (code) {
+          const res = await axios.post(`${API_URL}/api/auth/google`, {
+            code,
+            redirectUri: REDIRECT_URI,
+            codeVerifier,
+          });
+          login(res.data.token);
+        }
+      }
+    } catch (error) {
+      let message = 'Eroare la autentificarea cu Google';
+      if (isAxiosError(error)) {
+        message = error.response?.data?.message || message;
+      }
+      Toast.show({ type: 'error', text1: 'Eroare', text2: message });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -72,10 +131,7 @@ export default function LoginScreen() {
         <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
 
         <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: inputBg, color: inputColor },
-          ]}
+          style={[styles.input, { backgroundColor: inputBg, color: inputColor }]}
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
@@ -87,10 +143,7 @@ export default function LoginScreen() {
         />
 
         <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: inputBg, color: inputColor },
-          ]}
+          style={[styles.input, { backgroundColor: inputBg, color: inputColor }]}
           placeholder="Parolă"
           value={password}
           onChangeText={setPassword}
@@ -101,15 +154,12 @@ export default function LoginScreen() {
           onSubmitEditing={handleLogin}
         />
 
-        {/* Link Forgot Password */}
         <TouchableOpacity
           style={styles.forgotPasswordContainer}
           onPress={() => router.push('/forgot-password')}
           disabled={isLoading}
         >
-          <ThemedText style={styles.forgotPasswordText}>
-            Ai uitat parola?
-          </ThemedText>
+          <ThemedText style={styles.forgotPasswordText}>Ai uitat parola?</ThemedText>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -121,6 +171,27 @@ export default function LoginScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <ThemedText style={styles.buttonText}>LOGIN</ThemedText>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.dividerContainer}>
+          <View style={[styles.dividerLine, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+          <ThemedText style={styles.dividerText}>sau</ThemedText>
+          <View style={[styles.dividerLine, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.googleButton, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
+          onPress={handleGoogleSignIn}
+          disabled={isGoogleLoading || isLoading}
+        >
+          {isGoogleLoading ? (
+            <ActivityIndicator color="#4285F4" />
+          ) : (
+            <>
+              <MaterialIcons name="g-mobiledata" size={28} color="#4285F4" />
+              <ThemedText style={styles.googleButtonText}>Continuă cu Google</ThemedText>
+            </>
           )}
         </TouchableOpacity>
 
@@ -208,5 +279,33 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 15,
+    color: '#8E8E93',
+    fontSize: 14,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    gap: 8,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

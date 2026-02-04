@@ -28,7 +28,13 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
-      data: { email, password: hashedPassword, firstName, lastName },
+      data: { 
+        email, 
+        password: hashedPassword, 
+        firstName, 
+        lastName,
+        authProvider: 'local'
+      },
     });
 
     const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, {
@@ -49,7 +55,15 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user) {
+      return res.status(401).json({ message: 'Date incorecte.' });
+    }
+
+    if (user.authProvider === 'google') {
+      return res.status(400).json({ message: 'Folosește Google pentru a te autentifica.' });
+    }
+
+    if (!user.password || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Date incorecte.' });
     }
 
@@ -65,6 +79,94 @@ export const login = async (req, res) => {
       });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: 'Eroare server.' });
+  }
+};
+
+// --- GOOGLE AUTH ---
+export const googleAuth = async (req, res) => {
+  try {
+    const { accessToken, code, redirectUri, codeVerifier } = req.body;
+    
+    let googleAccessToken = accessToken;
+
+    if (code && !accessToken) {
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          code,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+          code_verifier: codeVerifier,
+        }),
+      });
+      
+      const tokenData = await tokenResponse.json();
+      
+      if (tokenData.error) {
+        console.error('Google token exchange error:', tokenData);
+        return res.status(401).json({ message: 'Eroare la autentificarea Google.' });
+      }
+      
+      googleAccessToken = tokenData.access_token;
+    }
+
+    if (!googleAccessToken) {
+      return res.status(400).json({ message: 'Token Google lipsă.' });
+    }
+
+    const response = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo`, {
+      headers: { Authorization: `Bearer ${googleAccessToken}` },
+    });
+    const payload = await response.json();
+
+    if (payload.error || !payload.email) {
+      return res.status(401).json({ message: 'Token Google invalid.' });
+    }
+
+    const { id: googleId, email, given_name: firstName, family_name: lastName } = payload;
+
+    let user = await prisma.user.findUnique({ where: { googleId } });
+
+    if (!user) {
+      user = await prisma.user.findUnique({ where: { email } });
+
+      if (user) {
+        if (user.authProvider === 'local') {
+          return res.status(409).json({ 
+            message: 'Există deja un cont cu acest email. Autentifică-te cu parola.' 
+          });
+        }
+        user = await prisma.user.update({
+          where: { email },
+          data: { googleId },
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email,
+            googleId,
+            firstName: firstName || null,
+            lastName: lastName || null,
+            authProvider: 'google',
+          },
+        });
+      }
+    }
+
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: TOKEN_EXPIRATION,
+    });
+
+    res.status(200).json({
+      message: 'Autentificare reușită!',
+      token,
+      user: { email: user.email, firstName: user.firstName },
+    });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
