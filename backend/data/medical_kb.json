@@ -94,13 +94,46 @@
     }
   },
   {
-    "keywords": ["bilirubină", "bilirubina", "bilirubin"],
+    "keywords": ["bilirubină totală", "bilirubina totala", "bilirubin total"],
     "info": {
-      "descriere": "Bilirubina este pigment galben din degradarea globulelor roșii. Excesul cauzează icter (îngălbenirea pielii).",
-      "valori_normale": "0.3-1.2 mg/dL (totală)",
+      "descriere": "Bilirubina totală este suma bilirubiței directe și indirecte, pigment galben din degradarea globulelor roșii. Excesul cauzează icter (îngălbenirea pielii).",
+      "valori_normale": "0.3-1.2 mg/dL",
       "cauze_crescut": "Afecțiuni hepatice (hepatită, ciroză), obstrucție biliară (pietre), anemie hemolitică, sindrom Gilbert (benign).",
-      "cauze_scazut": "Rar semnificativ.",
-      "sfaturi": "Pentru bilirubină crescută: Hidratare bună, evită alcoolul, protejează ficatul (evită medicamente hepatotoxice). Dacă pielea devine galbenă (icter), consultă medicul URGENT pentru excluderea hepatitei sau obstrucției biliare."
+      "cauze_scazut": "Rar semnificativ clinic.",
+      "sfaturi": "Pentru bilirubină crescută: Hidratare bună, evită alcoolul, protejează ficatul (evită medicamente hepatotoxice). Dacă pielea devine galbenă (icter), consultă medicul URGENT pentru excluderea hepatitei sau obstrucției biliare.",
+      "valori_critice": ">3 mg/dL necesită evaluare urgentă (risc de icter)"
+    }
+  },
+  {
+    "keywords": [
+      "bilirubină directă",
+      "bilirubina directa",
+      "bilirubin direct",
+      "bilirubină conjugată"
+    ],
+    "info": {
+      "descriere": "Bilirubina directă (conjugată) este forma procesată de ficat, solubilă în apă. Creșterea indică probleme hepatobiliare (ficat sau căi biliare).",
+      "valori_normale": "0-0.3 mg/dL",
+      "cauze_crescut": "Hepatită acută/cronică, ciroză hepatică, obstrucție biliară (pietre, tumori), sindrom Dubin-Johnson, medicamente hepatotoxice.",
+      "cauze_scazut": "Nu are semnificație clinică.",
+      "sfaturi": "Pentru bilirubină directă crescută: Evită strict alcoolul, consultă medicul pentru ecografie abdominală și teste hepatice complete. Această formă crescută indică adesea obstrucție biliară sau afectare hepatică.",
+      "valori_critice": ">1 mg/dL necesită evaluare hepatică urgentă"
+    }
+  },
+  {
+    "keywords": [
+      "bilirubină indirectă",
+      "bilirubina indirecta",
+      "bilirubin indirect",
+      "bilirubină neconjugată"
+    ],
+    "info": {
+      "descriere": "Bilirubina indirectă (neconjugată) este forma neprocesată, insolubilă în apă. Creșterea indică hemoliză (distrugere accelerată globule roșii) sau probleme de conjugare hepatică.",
+      "valori_normale": "0.2-0.8 mg/dL",
+      "cauze_crescut": "Anemie hemolitică (autoimună, G6PD), sindrom Gilbert (benign, genetic), imaturitate hepatică (nou-născuți), incompatibilitate Rh.",
+      "cauze_scazut": "Nu are semnificație clinică.",
+      "sfaturi": "Pentru bilirubină indirectă crescută: Hidratare abundentă, expunere la lumină solară moderată (ajută la degradare), evită trigger-ii hemolizei (infecții, medicamente oxidante). Dacă e persistent sau >2 mg/dL, consultă medicul pentru excluderea hemolizei.",
+      "valori_critice": ">3 mg/dL (risc de kernicterus la nou-născuți)"
     }
   }
 ]
