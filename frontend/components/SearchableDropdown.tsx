@@ -147,6 +147,8 @@ export default function SearchableDropdown({
               }
               showsVerticalScrollIndicator={true}
               style={styles.list}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              keyboardShouldPersistTaps="handled"
             />
           </View>
         </View>
@@ -175,13 +177,18 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
+    paddingTop: 60,
   },
   modalContent: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     paddingTop: 20,
-    maxHeight: '80%',
+    paddingBottom: 20,
+    maxHeight: '50%',
+    marginHorizontal: 10,
   },
   modalHeader: {
     flexDirection: 'row',
