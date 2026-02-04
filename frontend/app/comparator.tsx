@@ -11,6 +11,7 @@ import {
   useColorScheme,
   Modal,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -102,21 +103,29 @@ export default function ComparatorScreen() {
     setLoading(true);
     setHasSearched(true);
     setResults([]);
+    
+    // Închide tastatura automat când începe căutarea
+    Keyboard.dismiss();
 
     try {
       let response;
+
+      // Timeout mai mare pentru scraping (60 secunde)
+      const scrapeTimeout = 60000;
 
       if (mode === 'single') {
         // Single analysis
         response = await axios.get(`${API_URL}/api/prices`, {
           params: { analysisName: query },
           headers: { Authorization: `Bearer ${token}` },
+          timeout: scrapeTimeout,
         });
       } else {
         // Batch (multiple analyses)
         response = await axios.get(`${API_URL}/api/prices`, {
           params: { analysisNames: finalAnalyses.join(',') },
           headers: { Authorization: `Bearer ${token}` },
+          timeout: scrapeTimeout,
         });
       }
 
@@ -417,7 +426,13 @@ export default function ComparatorScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Căutăm oferte...</Text>
+          <Text style={styles.loadingText}>Căutăm cele mai bune prețuri...</Text>
+          <Text style={styles.loadingHint}>
+            Verificăm Synevo, MedLife, Sante și alte clinici
+          </Text>
+          <Text style={styles.loadingNote}>
+            Prima căutare poate dura până la 30 sec
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -731,8 +746,10 @@ const styles = StyleSheet.create({
   currency: { fontSize: 12, color: '#8E8E93' },
 
   // Loading
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 10, color: '#8E8E93' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
+  loadingText: { marginTop: 16, color: '#007AFF', fontSize: 16, fontWeight: '600' },
+  loadingHint: { marginTop: 8, color: '#8E8E93', fontSize: 14, textAlign: 'center' },
+  loadingNote: { marginTop: 16, color: '#8E8E93', fontSize: 12, fontStyle: 'italic' },
 
   // Empty
   empty: {
