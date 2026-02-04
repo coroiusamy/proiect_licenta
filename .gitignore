@@ -44,3 +44,7 @@ yarn-error.log
 *.hprof
 *~
 /analize_test/
+# ============== #
+# === OCR === #
+# ============== #
+*.traineddata
