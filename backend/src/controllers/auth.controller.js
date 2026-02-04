@@ -28,7 +28,13 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
-      data: { email, password: hashedPassword, firstName, lastName },
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        authProvider: 'local',
+      },
     });
 
     const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, {
@@ -49,22 +55,172 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user) {
+      return res.status(401).json({ message: 'Date incorecte.' });
+    }
+
+    if (user.authProvider === 'google') {
+      return res
+        .status(400)
+        .json({ message: 'Folosește Google pentru a te autentifica.' });
+    }
+
+    if (!user.password || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Date incorecte.' });
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: TOKEN_EXPIRATION,
     });
-    res
-      .status(200)
-      .json({
-        message: 'Logat!',
-        token,
-        user: { email: user.email, firstName: user.firstName },
-      });
+    res.status(200).json({
+      message: 'Logat!',
+      token,
+      user: { email: user.email, firstName: user.firstName },
+    });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: 'Eroare server.' });
+  }
+};
+
+// --- GOOGLE AUTH ---
+export const googleAuth = async (req, res) => {
+  try {
+    const { idToken, accessToken, code, redirectUri, codeVerifier } = req.body;
+
+    let googleUserInfo = null;
+
+    // Metoda 1: idToken de la native Google Sign-In
+    if (idToken) {
+      const response = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
+      );
+      const payload = await response.json();
+
+      if (payload.error || !payload.email) {
+        return res.status(401).json({ message: 'Token Google invalid.' });
+      }
+
+      // Verifică dacă token-ul este pentru aplicația noastră
+      if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+        return res.status(401).json({ message: 'Token Google invalid pentru această aplicație.' });
+      }
+
+      googleUserInfo = {
+        googleId: payload.sub,
+        email: payload.email,
+        firstName: payload.given_name || null,
+        lastName: payload.family_name || null,
+      };
+    }
+    // Metoda 2: code flow cu PKCE (pentru web/Expo Go)
+    else if (code) {
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          code,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+          code_verifier: codeVerifier,
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+
+      if (tokenData.error) {
+        console.error('Google token exchange error:', tokenData);
+        return res
+          .status(401)
+          .json({ message: 'Eroare la autentificarea Google.' });
+      }
+
+      const response = await fetch(
+        `https://www.googleapis.com/oauth2/v2/userinfo`,
+        {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        },
+      );
+      const payload = await response.json();
+
+      if (payload.error || !payload.email) {
+        return res.status(401).json({ message: 'Token Google invalid.' });
+      }
+
+      googleUserInfo = {
+        googleId: payload.id,
+        email: payload.email,
+        firstName: payload.given_name || null,
+        lastName: payload.family_name || null,
+      };
+    }
+    // Metoda 3: accessToken direct
+    else if (accessToken) {
+      const response = await fetch(
+        `https://www.googleapis.com/oauth2/v2/userinfo`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+      const payload = await response.json();
+
+      if (payload.error || !payload.email) {
+        return res.status(401).json({ message: 'Token Google invalid.' });
+      }
+
+      googleUserInfo = {
+        googleId: payload.id,
+        email: payload.email,
+        firstName: payload.given_name || null,
+        lastName: payload.family_name || null,
+      };
+    } else {
+      return res.status(400).json({ message: 'Token Google lipsă.' });
+    }
+
+    const { googleId, email, firstName, lastName } = googleUserInfo;
+
+    let user = await prisma.user.findUnique({ where: { googleId } });
+
+    if (!user) {
+      user = await prisma.user.findUnique({ where: { email } });
+
+      if (user) {
+        if (user.authProvider === 'local') {
+          return res.status(409).json({
+            message:
+              'Există deja un cont cu acest email. Autentifică-te cu parola.',
+          });
+        }
+        user = await prisma.user.update({
+          where: { email },
+          data: { googleId },
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email,
+            googleId,
+            firstName,
+            lastName,
+            authProvider: 'google',
+          },
+        });
+      }
+    }
+
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: TOKEN_EXPIRATION,
+    });
+
+    res.status(200).json({
+      message: 'Autentificare reușită!',
+      token,
+      user: { email: user.email, firstName: user.firstName },
+    });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };

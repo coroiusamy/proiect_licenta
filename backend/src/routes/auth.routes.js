@@ -4,6 +4,7 @@ import {
   login,
   forgotPassword,
   resetPassword,
+  googleAuth,
 } from '../controllers/auth.controller.js';
 
 const router = Router();
@@ -12,6 +13,8 @@ const router = Router();
 router.post('/register', register);
 // POST /api/auth/login
 router.post('/login', login);
+// POST /api/auth/google
+router.post('/google', googleAuth);
 // POST /api/auth/forgot-password
 router.post('/forgot-password', forgotPassword);
 // POST /api/auth/reset-password

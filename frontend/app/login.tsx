@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TextInput,
   StyleSheet,
@@ -8,17 +8,25 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  View,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import axios, { isAxiosError } from 'axios';
 import Toast from 'react-native-toast-message';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { useAuth } from '@/context/AuthContext';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -28,6 +36,62 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: false,
+    });
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      
+      // Sign out first to always show account picker
+      await GoogleSignin.signOut();
+      
+      const response = await GoogleSignin.signIn();
+      
+      console.log('Google SignIn response:', JSON.stringify(response, null, 2));
+      
+      if (response.data?.idToken) {
+        console.log('Sending idToken to backend...');
+        const res = await axios.post(`${API_URL}/api/auth/google`, {
+          idToken: response.data.idToken,
+        });
+        console.log('Backend response:', res.data);
+        login(res.data.token);
+      } else {
+        console.log('No idToken in response:', response);
+        throw new Error('Nu s-a putut obține token-ul Google');
+      }
+    } catch (error: any) {
+      console.log('Google SignIn Error:', error);
+      console.log('Error code:', error.code);
+      console.log('Error message:', error.message);
+      
+      let message = 'Eroare la autentificarea cu Google';
+      
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // Utilizatorul a anulat - nu afișăm eroare
+        setIsGoogleLoading(false);
+        return;
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        message = 'Autentificare în curs...';
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        message = 'Google Play Services nu este disponibil';
+      } else if (isAxiosError(error)) {
+        message = error.response?.data?.message || message;
+      }
+      
+      Toast.show({ type: 'error', text1: 'Eroare', text2: message });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -64,12 +128,19 @@ export default function LoginScreen() {
   const placeholderColor = isDark ? '#8E8E93' : '#C7C7CC';
 
   return (
-    <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ThemedView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
 
         <TextInput
           style={[
@@ -101,7 +172,6 @@ export default function LoginScreen() {
           onSubmitEditing={handleLogin}
         />
 
-        {/* Link Forgot Password */}
         <TouchableOpacity
           style={styles.forgotPasswordContainer}
           onPress={() => router.push('/forgot-password')}
@@ -124,6 +194,42 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
+        <View style={styles.dividerContainer}>
+          <View
+            style={[
+              styles.dividerLine,
+              { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+            ]}
+          />
+          <ThemedText style={styles.dividerText}>sau</ThemedText>
+          <View
+            style={[
+              styles.dividerLine,
+              { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+            ]}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.googleButton,
+            { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' },
+          ]}
+          onPress={handleGoogleSignIn}
+          disabled={isGoogleLoading || isLoading}
+        >
+          {isGoogleLoading ? (
+            <ActivityIndicator color="#4285F4" />
+          ) : (
+            <>
+              <MaterialIcons name="g-mobiledata" size={28} color="#4285F4" />
+              <ThemedText style={styles.googleButtonText}>
+                Continuă cu Google
+              </ThemedText>
+            </>
+          )}
+        </TouchableOpacity>
+
         <Pressable
           style={styles.registerLink}
           onPress={() => router.push('/register')}
@@ -134,8 +240,10 @@ export default function LoginScreen() {
             Înregistrează-te
           </ThemedText>
         </Pressable>
-      </KeyboardAvoidingView>
-    </ThemedView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -145,6 +253,9 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },
@@ -208,5 +319,33 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 15,
+    color: '#8E8E93',
+    fontSize: 14,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    gap: 8,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

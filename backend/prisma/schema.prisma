@@ -11,24 +11,26 @@ datasource db {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  password  String
+  password  String?
   createdAt DateTime @default(now())
 
+  googleId    String?  @unique
+  authProvider String  @default("local") // "local" or "google"
+
   // --- Informații Personale ---
-  firstName   String?  // Prenume
-  lastName    String?  // Nume de familie
+  firstName   String?
+  lastName    String?
   dateOfBirth DateTime?
-  gender      String?  // "MALE", "FEMALE"
+  gender      String?
   
   // --- Biometrie ---
-  weight      Float?   // Greutate (kg)
-  height      Float?   // Înălțime (cm)
+  weight      Float?
+  height      Float?
 
   // --- Câmpuri pentru Resetare Parolă ---
-  resetPasswordToken   String?   @unique // Token-ul unic trimis pe mail
-  resetPasswordExpires DateTime? // Când expiră token-ul (ex: 1 oră)
+  resetPasswordToken   String?   @unique
+  resetPasswordExpires DateTime?
   
-  // Un user are o listă de rezultate
   analysisResults AnalysisResult[]
 }
 

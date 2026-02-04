@@ -9,6 +9,7 @@ import {
   ScrollView,
   useColorScheme,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import axios, { isAxiosError } from 'axios';
 import Toast from 'react-native-toast-message';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -70,15 +71,16 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ThemedView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
           <ThemedText style={styles.title}>Schimbă Parola</ThemedText>
 
           <ThemedText style={styles.subtitle}>
@@ -137,6 +139,7 @@ export default function ResetPasswordScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </ThemedView>
+    </SafeAreaView>
   );
 }
 
