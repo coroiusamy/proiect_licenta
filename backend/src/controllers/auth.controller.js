@@ -86,11 +86,35 @@ export const login = async (req, res) => {
 // --- GOOGLE AUTH ---
 export const googleAuth = async (req, res) => {
   try {
-    const { accessToken, code, redirectUri, codeVerifier } = req.body;
+    const { idToken, accessToken, code, redirectUri, codeVerifier } = req.body;
 
-    let googleAccessToken = accessToken;
+    let googleUserInfo = null;
 
-    if (code && !accessToken) {
+    // Metoda 1: idToken de la native Google Sign-In
+    if (idToken) {
+      const response = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
+      );
+      const payload = await response.json();
+
+      if (payload.error || !payload.email) {
+        return res.status(401).json({ message: 'Token Google invalid.' });
+      }
+
+      // Verifică dacă token-ul este pentru aplicația noastră
+      if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+        return res.status(401).json({ message: 'Token Google invalid pentru această aplicație.' });
+      }
+
+      googleUserInfo = {
+        googleId: payload.sub,
+        email: payload.email,
+        firstName: payload.given_name || null,
+        lastName: payload.family_name || null,
+      };
+    }
+    // Metoda 2: code flow cu PKCE (pentru web/Expo Go)
+    else if (code) {
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -112,31 +136,50 @@ export const googleAuth = async (req, res) => {
           .json({ message: 'Eroare la autentificarea Google.' });
       }
 
-      googleAccessToken = tokenData.access_token;
-    }
+      const response = await fetch(
+        `https://www.googleapis.com/oauth2/v2/userinfo`,
+        {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        },
+      );
+      const payload = await response.json();
 
-    if (!googleAccessToken) {
+      if (payload.error || !payload.email) {
+        return res.status(401).json({ message: 'Token Google invalid.' });
+      }
+
+      googleUserInfo = {
+        googleId: payload.id,
+        email: payload.email,
+        firstName: payload.given_name || null,
+        lastName: payload.family_name || null,
+      };
+    }
+    // Metoda 3: accessToken direct
+    else if (accessToken) {
+      const response = await fetch(
+        `https://www.googleapis.com/oauth2/v2/userinfo`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+      const payload = await response.json();
+
+      if (payload.error || !payload.email) {
+        return res.status(401).json({ message: 'Token Google invalid.' });
+      }
+
+      googleUserInfo = {
+        googleId: payload.id,
+        email: payload.email,
+        firstName: payload.given_name || null,
+        lastName: payload.family_name || null,
+      };
+    } else {
       return res.status(400).json({ message: 'Token Google lipsă.' });
     }
 
-    const response = await fetch(
-      `https://www.googleapis.com/oauth2/v2/userinfo`,
-      {
-        headers: { Authorization: `Bearer ${googleAccessToken}` },
-      },
-    );
-    const payload = await response.json();
-
-    if (payload.error || !payload.email) {
-      return res.status(401).json({ message: 'Token Google invalid.' });
-    }
-
-    const {
-      id: googleId,
-      email,
-      given_name: firstName,
-      family_name: lastName,
-    } = payload;
+    const { googleId, email, firstName, lastName } = googleUserInfo;
 
     let user = await prisma.user.findUnique({ where: { googleId } });
 
@@ -159,8 +202,8 @@ export const googleAuth = async (req, res) => {
           data: {
             email,
             googleId,
-            firstName: firstName || null,
-            lastName: lastName || null,
+            firstName,
+            lastName,
             authProvider: 'google',
           },
         });

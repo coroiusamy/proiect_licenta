@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TextInput,
   StyleSheet,
@@ -9,23 +9,24 @@ import {
   KeyboardAvoidingView,
   Platform,
   View,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import axios, { isAxiosError } from 'axios';
 import Toast from 'react-native-toast-message';
-import * as WebBrowser from 'expo-web-browser';
-import * as Crypto from 'expo-crypto';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { useAuth } from '@/context/AuthContext';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 
-WebBrowser.maybeCompleteAuthSession();
-
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
-const REDIRECT_URI = 'https://auth.expo.io/@samycoroiu/frontend';
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -37,54 +38,55 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: false,
+    });
+  }, []);
+
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const state = Crypto.randomUUID();
-      const codeVerifier = Crypto.randomUUID() + Crypto.randomUUID();
-      const codeChallenge = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        codeVerifier,
-        { encoding: Crypto.CryptoEncoding.BASE64 },
-      );
-      const codeChallengeFormatted = codeChallenge
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${GOOGLE_CLIENT_ID}` +
-        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-        `&response_type=code` +
-        `&scope=${encodeURIComponent('openid profile email')}` +
-        `&state=${state}` +
-        `&code_challenge=${codeChallengeFormatted}` +
-        `&code_challenge_method=S256`;
-
-      const result = await WebBrowser.openAuthSessionAsync(
-        authUrl,
-        REDIRECT_URI,
-      );
-
-      if (result.type === 'success' && result.url) {
-        const url = new URL(result.url);
-        const code = url.searchParams.get('code');
-
-        if (code) {
-          const res = await axios.post(`${API_URL}/api/auth/google`, {
-            code,
-            redirectUri: REDIRECT_URI,
-            codeVerifier,
-          });
-          login(res.data.token);
-        }
+      await GoogleSignin.hasPlayServices();
+      
+      // Sign out first to always show account picker
+      await GoogleSignin.signOut();
+      
+      const response = await GoogleSignin.signIn();
+      
+      console.log('Google SignIn response:', JSON.stringify(response, null, 2));
+      
+      if (response.data?.idToken) {
+        console.log('Sending idToken to backend...');
+        const res = await axios.post(`${API_URL}/api/auth/google`, {
+          idToken: response.data.idToken,
+        });
+        console.log('Backend response:', res.data);
+        login(res.data.token);
+      } else {
+        console.log('No idToken in response:', response);
+        throw new Error('Nu s-a putut obține token-ul Google');
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.log('Google SignIn Error:', error);
+      console.log('Error code:', error.code);
+      console.log('Error message:', error.message);
+      
       let message = 'Eroare la autentificarea cu Google';
-      if (isAxiosError(error)) {
+      
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // Utilizatorul a anulat - nu afișăm eroare
+        setIsGoogleLoading(false);
+        return;
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        message = 'Autentificare în curs...';
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        message = 'Google Play Services nu este disponibil';
+      } else if (isAxiosError(error)) {
         message = error.response?.data?.message || message;
       }
+      
       Toast.show({ type: 'error', text1: 'Eroare', text2: message });
     } finally {
       setIsGoogleLoading(false);
@@ -126,12 +128,19 @@ export default function LoginScreen() {
   const placeholderColor = isDark ? '#8E8E93' : '#C7C7CC';
 
   return (
-    <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ThemedView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
 
         <TextInput
           style={[
@@ -231,8 +240,10 @@ export default function LoginScreen() {
             Înregistrează-te
           </ThemedText>
         </Pressable>
-      </KeyboardAvoidingView>
-    </ThemedView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -242,6 +253,9 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },
