@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import axios, { isAxiosError } from 'axios';
 import Toast from 'react-native-toast-message';
@@ -86,15 +87,16 @@ export default function RegisterScreen() {
   ];
 
   return (
-    <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ThemedView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
           <ThemedText style={styles.title}>Creează Cont</ThemedText>
           <ThemedText style={styles.subtitle}>
             Completează detaliile tale
@@ -181,6 +183,7 @@ export default function RegisterScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </ThemedView>
+    </SafeAreaView>
   );
 }
 
