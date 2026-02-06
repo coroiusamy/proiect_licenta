@@ -97,92 +97,95 @@ export default function RegisterScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-          <ThemedText style={styles.title}>Creează Cont</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Completează detaliile tale
-          </ThemedText>
-
-          {/* PRENUME */}
-          <TextInput
-            style={inputCommonStyle}
-            placeholder="Prenume"
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholderTextColor={placeholderColor}
-            returnKeyType="next"
-            onSubmitEditing={() => lastNameRef.current?.focus()} // Sare la următorul
-            blurOnSubmit={false}
-          />
-
-          {/* NUME */}
-          <TextInput
-            ref={lastNameRef}
-            style={inputCommonStyle}
-            placeholder="Nume"
-            value={lastName}
-            onChangeText={setLastName}
-            placeholderTextColor={placeholderColor}
-            returnKeyType="next"
-            onSubmitEditing={() => emailRef.current?.focus()}
-            blurOnSubmit={false}
-          />
-
-          {/* EMAIL */}
-          <TextInput
-            ref={emailRef}
-            style={inputCommonStyle}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            placeholderTextColor={placeholderColor}
-            returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()}
-            blurOnSubmit={false}
-          />
-
-          {/* PAROLĂ */}
-          <TextInput
-            ref={passwordRef}
-            style={inputCommonStyle}
-            placeholder="Parolă (min. 8 caractere, 1 majusculă)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholderTextColor={placeholderColor}
-            returnKeyType="done"
-            onSubmitEditing={handleRegister} // Trimite formularul
-          />
-
-          <TouchableOpacity
-            style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <ThemedText style={styles.buttonText}>
-                ÎNREGISTREAZĂ-TE
-              </ThemedText>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => router.back()}
-            disabled={isLoading}
-          >
-            <ThemedText style={{ color: isDark ? '#A1A1A6' : '#666' }}>
-              Ai deja cont?{' '}
-              <ThemedText style={styles.linkText}>Loghează-te</ThemedText>
+            <ThemedText style={styles.title}>Creează Cont</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Completează detaliile tale
             </ThemedText>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ThemedView>
+
+            {/* PRENUME */}
+            <TextInput
+              style={inputCommonStyle}
+              placeholder="Prenume"
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholderTextColor={placeholderColor}
+              returnKeyType="next"
+              onSubmitEditing={() => lastNameRef.current?.focus()} // Sare la următorul
+              blurOnSubmit={false}
+            />
+
+            {/* NUME */}
+            <TextInput
+              ref={lastNameRef}
+              style={inputCommonStyle}
+              placeholder="Nume"
+              value={lastName}
+              onChangeText={setLastName}
+              placeholderTextColor={placeholderColor}
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
+              blurOnSubmit={false}
+            />
+
+            {/* EMAIL */}
+            <TextInput
+              ref={emailRef}
+              style={inputCommonStyle}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              placeholderTextColor={placeholderColor}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
+            />
+
+            {/* PAROLĂ */}
+            <TextInput
+              ref={passwordRef}
+              style={inputCommonStyle}
+              placeholder="Parolă (min. 8 caractere, 1 majusculă)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholderTextColor={placeholderColor}
+              returnKeyType="done"
+              onSubmitEditing={handleRegister} // Trimite formularul
+            />
+
+            <TouchableOpacity
+              style={[
+                styles.buttonContainer,
+                isLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleRegister}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <ThemedText style={styles.buttonText}>
+                  ÎNREGISTREAZĂ-TE
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.loginLink}
+              onPress={() => router.back()}
+              disabled={isLoading}
+            >
+              <ThemedText style={{ color: isDark ? '#A1A1A6' : '#666' }}>
+                Ai deja cont?{' '}
+                <ThemedText style={styles.linkText}>Loghează-te</ThemedText>
+              </ThemedText>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ThemedView>
     </SafeAreaView>
   );
 }
@@ -193,13 +196,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: 'gray',
-    textAlign: 'center',
+    opacity: 0.7,
     marginBottom: 30,
   },
   input: {

@@ -103,7 +103,7 @@ export default function ComparatorScreen() {
     setLoading(true);
     setHasSearched(true);
     setResults([]);
-    
+
     // Închide tastatura automat când începe căutarea
     Keyboard.dismiss();
 
@@ -142,7 +142,6 @@ export default function ComparatorScreen() {
         });
       }
     } catch (error) {
-      console.error(error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',
@@ -154,9 +153,13 @@ export default function ComparatorScreen() {
   };
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch((err) =>
-      console.error("Couldn't load page", err)
-    );
+    Linking.openURL(url).catch(() => {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Nu s-a putut deschide link-ul.',
+      });
+    });
   };
 
   const openPackageDetails = (pkg: any) => {
@@ -293,10 +296,14 @@ export default function ComparatorScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <MaterialIcons name="arrow-back" size={24} color={textColor} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: textColor }]}>
-          Comparator Prețuri
-        </Text>
-        <View style={{ width: 24 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: textColor }]}>
+            Comparator Prețuri
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: textColor }]}>
+            Găsește cele mai bune oferte
+          </Text>
+        </View>
       </View>
 
       {/* Mode Selector */}
@@ -405,8 +412,8 @@ export default function ComparatorScreen() {
                 ? 'rezultat găsit'
                 : 'pachet găsit'
               : mode === 'single'
-              ? 'rezultate găsite'
-              : 'pachete găsite'}
+                ? 'rezultate găsite'
+                : 'pachete găsite'}
           </Text>
           {results.length > 0 && (
             <Text style={styles.rangeText}>
@@ -426,7 +433,9 @@ export default function ComparatorScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Căutăm cele mai bune prețuri...</Text>
+          <Text style={styles.loadingText}>
+            Căutăm cele mai bune prețuri...
+          </Text>
           <Text style={styles.loadingHint}>
             Verificăm Synevo, MedLife, Sante și alte clinici
           </Text>
@@ -492,7 +501,7 @@ export default function ComparatorScreen() {
                           {ex}
                         </Text>
                       </TouchableOpacity>
-                    )
+                    ),
                   )}
                 </View>
               </View>
@@ -612,12 +621,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
+    gap: 15,
   },
   backBtn: { padding: 5 },
-  title: { fontSize: 20, fontWeight: 'bold' },
+  headerTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 2 },
+  headerSubtitle: { fontSize: 14, opacity: 0.7 },
 
   // Mode Selector
   modeSelector: {
@@ -746,10 +756,30 @@ const styles = StyleSheet.create({
   currency: { fontSize: 12, color: '#8E8E93' },
 
   // Loading
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
-  loadingText: { marginTop: 16, color: '#007AFF', fontSize: 16, fontWeight: '600' },
-  loadingHint: { marginTop: 8, color: '#8E8E93', fontSize: 14, textAlign: 'center' },
-  loadingNote: { marginTop: 16, color: '#8E8E93', fontSize: 12, fontStyle: 'italic' },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingHint: {
+    marginTop: 8,
+    color: '#8E8E93',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  loadingNote: {
+    marginTop: 16,
+    color: '#8E8E93',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
 
   // Empty
   empty: {

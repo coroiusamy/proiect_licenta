@@ -49,32 +49,23 @@ export default function LoginScreen() {
     setIsGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
-      
+
       // Sign out first to always show account picker
       await GoogleSignin.signOut();
-      
+
       const response = await GoogleSignin.signIn();
-      
-      console.log('Google SignIn response:', JSON.stringify(response, null, 2));
-      
+
       if (response.data?.idToken) {
-        console.log('Sending idToken to backend...');
         const res = await axios.post(`${API_URL}/api/auth/google`, {
           idToken: response.data.idToken,
         });
-        console.log('Backend response:', res.data);
         login(res.data.token);
       } else {
-        console.log('No idToken in response:', response);
         throw new Error('Nu s-a putut obține token-ul Google');
       }
     } catch (error: any) {
-      console.log('Google SignIn Error:', error);
-      console.log('Error code:', error.code);
-      console.log('Error message:', error.message);
-      
       let message = 'Eroare la autentificarea cu Google';
-      
+
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         // Utilizatorul a anulat - nu afișăm eroare
         setIsGoogleLoading(false);
@@ -86,7 +77,7 @@ export default function LoginScreen() {
       } else if (isAxiosError(error)) {
         message = error.response?.data?.message || message;
       }
-      
+
       Toast.show({ type: 'error', text1: 'Eroare', text2: message });
     } finally {
       setIsGoogleLoading(false);
@@ -140,106 +131,120 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
-
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: inputBg, color: inputColor },
-          ]}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          placeholderTextColor={placeholderColor}
-          returnKeyType="next"
-        />
-
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: inputBg, color: inputColor },
-          ]}
-          placeholder="Parolă"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholderTextColor={placeholderColor}
-          autoComplete="password"
-          returnKeyType="done"
-          onSubmitEditing={handleLogin}
-        />
-
-        <TouchableOpacity
-          style={styles.forgotPasswordContainer}
-          onPress={() => router.push('/forgot-password')}
-          disabled={isLoading}
-        >
-          <ThemedText style={styles.forgotPasswordText}>
-            Ai uitat parola?
-          </ThemedText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <ThemedText style={styles.buttonText}>LOGIN</ThemedText>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View
-            style={[
-              styles.dividerLine,
-              { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
-            ]}
-          />
-          <ThemedText style={styles.dividerText}>sau</ThemedText>
-          <View
-            style={[
-              styles.dividerLine,
-              { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
-            ]}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.googleButton,
-            { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' },
-          ]}
-          onPress={handleGoogleSignIn}
-          disabled={isGoogleLoading || isLoading}
-        >
-          {isGoogleLoading ? (
-            <ActivityIndicator color="#4285F4" />
-          ) : (
-            <>
-              <MaterialIcons name="g-mobiledata" size={28} color="#4285F4" />
-              <ThemedText style={styles.googleButtonText}>
-                Continuă cu Google
+            <View style={styles.headerSection}>
+              <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
+              <ThemedText style={styles.subtitle}>
+                Conectează-te pentru a continua
               </ThemedText>
-            </>
-          )}
-        </TouchableOpacity>
+            </View>
 
-        <Pressable
-          style={styles.registerLink}
-          onPress={() => router.push('/register')}
-          disabled={isLoading}
-        >
-          <ThemedText style={styles.registerText}>Nu ai cont? </ThemedText>
-          <ThemedText style={[styles.registerText, styles.registerLinkText]}>
-            Înregistrează-te
-          </ThemedText>
-        </Pressable>
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: inputBg, color: inputColor },
+              ]}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              placeholderTextColor={placeholderColor}
+              returnKeyType="next"
+            />
+
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: inputBg, color: inputColor },
+              ]}
+              placeholder="Parolă"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholderTextColor={placeholderColor}
+              autoComplete="password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+            />
+
+            <TouchableOpacity
+              style={styles.forgotPasswordContainer}
+              onPress={() => router.push('/forgot-password')}
+              disabled={isLoading}
+            >
+              <ThemedText style={styles.forgotPasswordText}>
+                Ai uitat parola?
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.buttonContainer,
+                isLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <ThemedText style={styles.buttonText}>LOGIN</ThemedText>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.dividerContainer}>
+              <View
+                style={[
+                  styles.dividerLine,
+                  { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+                ]}
+              />
+              <ThemedText style={styles.dividerText}>sau</ThemedText>
+              <View
+                style={[
+                  styles.dividerLine,
+                  { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+                ]}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' },
+              ]}
+              onPress={handleGoogleSignIn}
+              disabled={isGoogleLoading || isLoading}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator color="#4285F4" />
+              ) : (
+                <>
+                  <MaterialIcons
+                    name="g-mobiledata"
+                    size={28}
+                    color="#4285F4"
+                  />
+                  <ThemedText style={styles.googleButtonText}>
+                    Continuă cu Google
+                  </ThemedText>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <Pressable
+              style={styles.registerLink}
+              onPress={() => router.push('/register')}
+              disabled={isLoading}
+            >
+              <ThemedText style={styles.registerText}>Nu ai cont? </ThemedText>
+              <ThemedText
+                style={[styles.registerText, styles.registerLinkText]}
+              >
+                Înregistrează-te
+              </ThemedText>
+            </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
       </ThemedView>
@@ -260,10 +265,17 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+    marginBottom: 30,
+  },
+  headerSection: {
+    marginBottom: 10,
   },
   input: {
     height: 50,

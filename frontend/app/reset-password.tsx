@@ -81,64 +81,69 @@ export default function ResetPasswordScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-          <ThemedText style={styles.title}>Schimbă Parola</ThemedText>
+            <ThemedText style={styles.title}>Schimbă Parola</ThemedText>
 
-          <ThemedText style={styles.subtitle}>
-            Introdu codul de 6 cifre primit pe email
-            {email ? (
-              <ThemedText style={{ fontWeight: 'bold' }}>
-                {' '}
-                ({email}){' '}
-              </ThemedText>
-            ) : (
-              ' '
-            )}
-            și alege o parolă nouă.
-          </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Introdu codul de 6 cifre primit pe email
+              {email ? (
+                <ThemedText style={{ fontWeight: 'bold' }}>
+                  {' '}
+                  ({email}){' '}
+                </ThemedText>
+              ) : (
+                ' '
+              )}
+              și alege o parolă nouă.
+            </ThemedText>
 
-          {/* Input COD */}
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: inputBg, color: inputColor },
-            ]}
-            placeholder="Codul (6 cifre)"
-            value={token}
-            onChangeText={setToken}
-            keyboardType="numeric"
-            placeholderTextColor={placeholderColor}
-            returnKeyType="next"
-          />
+            {/* Input COD */}
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: inputBg, color: inputColor },
+              ]}
+              placeholder="Codul (6 cifre)"
+              value={token}
+              onChangeText={setToken}
+              keyboardType="numeric"
+              placeholderTextColor={placeholderColor}
+              returnKeyType="next"
+            />
 
-          {/* Input Parolă Nouă */}
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: inputBg, color: inputColor },
-            ]}
-            placeholder="Noua Parolă"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-            placeholderTextColor={placeholderColor}
-            returnKeyType="done"
-            onSubmitEditing={handleFinalReset}
-          />
+            {/* Input Parolă Nouă */}
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: inputBg, color: inputColor },
+              ]}
+              placeholder="Noua Parolă"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              placeholderTextColor={placeholderColor}
+              returnKeyType="done"
+              onSubmitEditing={handleFinalReset}
+            />
 
-          <TouchableOpacity
-            style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
-            onPress={handleFinalReset}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.buttonText}>SALVEAZĂ PAROLA</ThemedText>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ThemedView>
+            <TouchableOpacity
+              style={[
+                styles.buttonContainer,
+                isLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleFinalReset}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText style={styles.buttonText}>
+                  SALVEAZĂ PAROLA
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ThemedView>
     </SafeAreaView>
   );
 }
@@ -151,18 +156,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: 'gray',
-    textAlign: 'center',
+    opacity: 0.7,
     marginBottom: 30,
     lineHeight: 22,
-    paddingHorizontal: 10,
   },
   input: {
     height: 50,

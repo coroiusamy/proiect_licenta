@@ -40,13 +40,13 @@ const TimePeriodSelector = ({ selected, onSelect, isDark }: any) => {
         const buttonBg = isSelected
           ? '#007AFF'
           : isDark
-          ? '#2C2C2E'
-          : '#F2F2F7';
+            ? '#2C2C2E'
+            : '#F2F2F7';
         const textColor = isSelected
           ? '#FFFFFF'
           : isDark
-          ? '#FFFFFF'
-          : '#000000';
+            ? '#FFFFFF'
+            : '#000000';
 
         return (
           <TouchableOpacity
@@ -187,17 +187,16 @@ export default function ChartDetailScreen() {
       });
 
       const relevantData = response.data.filter(
-        (item: any) => item.analysisTypeId.toString() === typeId
+        (item: any) => item.analysisTypeId.toString() === typeId,
       );
 
       const sortedData = relevantData.sort(
         (a: any, b: any) =>
-          new Date(a.date).getTime() - new Date(b.date).getTime()
+          new Date(a.date).getTime() - new Date(b.date).getTime(),
       );
 
       setAllData(sortedData);
     } catch (error) {
-      console.error(error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',
@@ -219,7 +218,7 @@ export default function ChartDetailScreen() {
       now.setHours(23, 59, 59, 999);
       const cutoffDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
       dataToProcess = dataToProcess.filter(
-        (a) => new Date(a.date) >= cutoffDate
+        (a) => new Date(a.date) >= cutoffDate,
       );
     }
 
@@ -509,7 +508,7 @@ const styles = StyleSheet.create({
   },
   backButton: { marginRight: 15, padding: 5 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 2 },
-  headerSubtitle: { fontSize: 14 },
+  headerSubtitle: { fontSize: 14, opacity: 0.7 },
   periodSelector: {
     flexDirection: 'row',
     paddingHorizontal: 20,
