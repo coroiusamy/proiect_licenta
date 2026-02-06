@@ -42,7 +42,14 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite accesul la poze pentru a-ți seta poza de profil.",
+          "cameraPermission": "Permite accesul la cameră pentru a-ți face o poză de profil."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

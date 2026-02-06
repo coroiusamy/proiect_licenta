@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -173,7 +174,7 @@ export default function HomeScreen() {
       // Sortare descrescătoare
       const sorted = analyses.sort(
         (a: any, b: any) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
+          new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
       setRecentAnalyses(sorted.slice(0, 5));
 
@@ -192,7 +193,7 @@ export default function HomeScreen() {
         lastUpdate: analyses.length > 0 ? new Date(analyses[0].date) : null,
       });
     } catch (error) {
-      console.error(error);
+      // Eroare silențioasă - nu afișăm toast la încărcarea dashboard-ului
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -275,12 +276,23 @@ export default function HomeScreen() {
               style={styles.profileButton}
               onPress={() => router.push('/profil')}
             >
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileInitials}>
-                  {userData?.firstName?.[0]}
-                  {userData?.lastName?.[0]}
-                </Text>
-              </View>
+              {userData?.profilePicture ? (
+                <Image
+                  source={{
+                    uri: userData.profilePicture.startsWith('http')
+                      ? userData.profilePicture
+                      : `${API_URL}${userData.profilePicture}`,
+                  }}
+                  style={styles.profileAvatarImage}
+                />
+              ) : (
+                <View style={styles.profileAvatar}>
+                  <Text style={styles.profileInitials}>
+                    {userData?.firstName?.[0]}
+                    {userData?.lastName?.[0]}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -445,6 +457,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  profileAvatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
