@@ -73,7 +73,7 @@ export default function AdaugaScreen() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 1,
         allowsEditing: false,
       });
@@ -131,7 +131,7 @@ export default function AdaugaScreen() {
             'Content-Type': 'multipart/form-data',
           },
           timeout: 60000,
-        }
+        },
       );
 
       Toast.show({
@@ -147,7 +147,6 @@ export default function AdaugaScreen() {
         router.push('/istoric');
       }, 1500);
     } catch (error: any) {
-      console.error('Upload error:', error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',

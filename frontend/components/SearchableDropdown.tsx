@@ -36,11 +36,11 @@ export default function SearchableDropdown({
   const modalBg = isDark ? '#1C1C1E' : '#FFFFFF';
 
   const selectedItem = items.find(
-    (item) => item.id.toString() === selectedValue
+    (item) => item.id.toString() === selectedValue,
   );
 
   const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleSelect = (itemId: string) => {

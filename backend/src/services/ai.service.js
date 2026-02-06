@@ -19,7 +19,7 @@ const saveToDataset = (userPrompt, assistantResponse) => {
   try {
     const datasetPath = path.join(
       process.cwd(),
-      'dataset_wellness_ollama.jsonl'
+      'dataset_wellness_ollama.jsonl',
     );
     const entry = {
       messages: [
@@ -29,7 +29,7 @@ const saveToDataset = (userPrompt, assistantResponse) => {
     };
     fs.appendFileSync(datasetPath, JSON.stringify(entry) + '\n');
   } catch (err) {
-    console.error('⚠️ [Dataset] Eroare la salvare:', err.message);
+    console.error('Eroare la salvare dataset:', err.message);
   }
 };
 
@@ -39,11 +39,9 @@ const saveToDataset = (userPrompt, assistantResponse) => {
 try {
   const rawData = fs.readFileSync(kbPath, 'utf8');
   knowledgeBase = JSON.parse(rawData);
-  console.log(
-    `✅ RAG: Baza medicală încărcată (${knowledgeBase.length} intrări)`
-  );
+  console.log(`RAG: Baza medicală încărcată (${knowledgeBase.length} intrări)`);
 } catch (err) {
-  console.error('❌ RAG: Nu s-a putut încărca medical_kb.json', err);
+  console.error('RAG: Nu s-a putut încărca medical_kb.json', err);
 }
 
 // ============================================
@@ -53,7 +51,7 @@ function retrieveContext(analysisName) {
   const normalize = (str) => str.toLowerCase().trim();
   const target = normalize(analysisName);
   const found = knowledgeBase.find((entry) =>
-    entry.keywords.some((k) => target.includes(normalize(k)))
+    entry.keywords.some((k) => target.includes(normalize(k))),
   );
   return found ? found.info : null;
 }
@@ -153,19 +151,13 @@ export async function generateWellnessAdvice(
   unit,
   status,
   refMin = null,
-  refMax = null
+  refMax = null,
 ) {
   const contextData = retrieveContext(analysisName);
   const severity = detectSeverity(value, refMin, refMax, status);
   const simpleDesc = getSimpleDescription(analysisName, contextData);
 
-  console.log(
-    `📊 [AI] Severitate: ${severity.level} | Ton: ${severity.tone} | Urgență: ${severity.urgency}`
-  );
-
-  // ============================================
-  // CAZURI CRITICE - Răspuns hardcodat dar EMPATIC
-  // ============================================
+  // Cazuri critice - răspuns hardcodat dar empatic
   if (severity.level === 'CRITIC') {
     const criticalMessage =
       status === 'high'
@@ -224,8 +216,8 @@ CONTEXT:
     status === 'normal'
       ? 'normal'
       : status === 'high'
-      ? 'peste normal'
-      : 'sub normal'
+        ? 'peste normal'
+        : 'sub normal'
   }
 - Nivel: ${severity.level} (ton: ${severity.tone})
 
@@ -293,9 +285,6 @@ Răspunde ACUM (3-4 propoziții, un paragraf):`;
     let needsRegeneration = false;
     for (const term of forbiddenTerms) {
       if (advice.toLowerCase().includes(term)) {
-        console.warn(
-          `⚠️ [AI] Răspuns conține termen interzis: "${term}". Folosesc fallback.`
-        );
         needsRegeneration = true;
         break;
       }
@@ -310,19 +299,18 @@ Răspunde ACUM (3-4 propoziții, un paragraf):`;
         refMin,
         refMax,
         severity,
-        simpleDesc
+        simpleDesc,
       );
     }
 
     const disclaimer =
       '\n\nAcest mesaj are scop informativ și nu înlocuiește consultul medical.';
 
-    console.log(`✅ [AI] Sfat generat pentru ${analysisName}`);
     saveToDataset(prompt, advice);
 
     return advice + disclaimer;
   } catch (error) {
-    console.error('❌ [AI] Eroare Ollama:', error);
+    console.error('Eroare Ollama:', error);
     const fallback = generateFallbackAdvice(
       analysisName,
       value,
@@ -331,7 +319,7 @@ Răspunde ACUM (3-4 propoziții, un paragraf):`;
       refMin,
       refMax,
       severity,
-      simpleDesc
+      simpleDesc,
     );
     return (
       fallback +
@@ -351,7 +339,7 @@ function generateFallbackAdvice(
   refMin,
   refMax,
   severity,
-  simpleDesc
+  simpleDesc,
 ) {
   const statusText = status === 'high' ? 'peste' : 'sub';
   const refValue = status === 'high' ? refMax : refMin;

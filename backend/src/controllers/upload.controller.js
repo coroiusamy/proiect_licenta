@@ -32,9 +32,7 @@ export const uploadAnalysisFile = async (req, res) => {
   let textContent = '';
 
   try {
-    console.log('📄 [Upload] Primire fișier:', req.file.originalname);
-
-    // --- 1. EXTRAGERE TEXT (PDF sau OCR) ---
+    // 1. Extragere text (PDF sau OCR)
     if (req.file.mimetype === 'application/pdf') {
       const data = await pdf(req.file.buffer);
       textContent = data.text;
@@ -56,24 +54,17 @@ export const uploadAnalysisFile = async (req, res) => {
       });
     }
 
-    // --- 2. DETECTARE CLINICĂ ---
+    // 2. Detectare clinică
     const clinic = detectClinic(textContent);
-    console.log(`🏥 [Upload] Clinică detectată: ${clinic}`);
 
-    // --- 3. PARSARE INTELIGENTĂ (Selectăm parser-ul corespunzător) ---
-    console.log('🔍 [Upload] Parsare text...');
-
+    // 3. Parsare inteligentă
     let extractedResults = [];
 
     if (clinic === 'Regina Maria') {
-      console.log('🔴 [Upload] Folosim parser Regina Maria (multi-line)...');
       extractedResults = await parseReginaMariaPdf(textContent, userId);
     } else if (clinic === 'Synevo') {
-      console.log('📋 [Upload] Folosim parser Synevo...');
       extractedResults = await parseSynevoPdf(textContent, userId);
     } else {
-      // Fallback: încearcă Synevo (cel mai comun)
-      console.log('⚠️ [Upload] Clinică necunoscută, folosim parser Synevo...');
       extractedResults = await parseSynevoPdf(textContent, userId);
     }
 
@@ -83,17 +74,13 @@ export const uploadAnalysisFile = async (req, res) => {
       });
     }
 
-    console.log(
-      `✅ [Upload] ${extractedResults.length} analize identificate din ${clinic}!`
-    );
-
-    // --- 4. PREGĂTIRE DATE (Luăm toate tipurile din DB pentru referințe) ---
+    // 4. Pregătire date
     const allTypes = await prisma.analysisType.findMany();
 
     const savedResults = [];
     const backgroundJobs = [];
 
-    // --- 5. PROCESARE INTELIGENTĂ (Iterăm prin fiecare rezultat) ---
+    // 5. Procesare (iterăm prin fiecare rezultat)
     for (const item of extractedResults) {
       const typeInfo = allTypes.find((t) => t.id === item.analysisTypeId);
       let status = 'normal';
@@ -150,11 +137,7 @@ export const uploadAnalysisFile = async (req, res) => {
       }
     }
 
-    // --- 6. RĂSPUNS RAPID CĂTRE CLIENT ---
-    console.log(
-      `✅ [Upload] Salvate: ${savedResults.length}. Job-uri AI în coadă: ${backgroundJobs.length}`
-    );
-
+    // 6. Răspuns către client
     res.status(201).json({
       message: `Procesat cu succes! ${savedResults.length} analize salvate din ${clinic}.`,
       count: savedResults.length,
@@ -162,14 +145,9 @@ export const uploadAnalysisFile = async (req, res) => {
       aiPending: backgroundJobs.length,
     });
 
-    // --- 7. EXECUTARE AI ÎN BACKGROUND (După răspuns) ---
+    // 7. AI în background (după răspuns)
     if (backgroundJobs.length > 0) {
       setTimeout(async () => {
-        console.log(
-          `🤖 [Background] Începem procesarea a ${backgroundJobs.length} analize anormale...`
-        );
-
-        // Procesăm câte 3 simultan (batch processing)
         const batchSize = 3;
         for (let i = 0; i < backgroundJobs.length; i += batchSize) {
           const batch = backgroundJobs.slice(i, i + batchSize);
@@ -177,14 +155,13 @@ export const uploadAnalysisFile = async (req, res) => {
           await Promise.all(
             batch.map(async (job) => {
               try {
-                console.log(`   🔄 AI pentru: ${job.name} (${job.status})...`);
                 const advice = await generateWellnessAdvice(
                   job.name,
                   job.value,
                   job.unit || '',
                   job.status,
                   job.refMin,
-                  job.refMax
+                  job.refMax,
                 );
 
                 if (advice) {
@@ -192,23 +169,17 @@ export const uploadAnalysisFile = async (req, res) => {
                     where: { id: job.id },
                     data: { aiAdvice: advice },
                   });
-                  console.log(`   ✅ Sfat salvat pentru ${job.name}`);
                 }
               } catch (err) {
-                console.error(
-                  `   ❌ AI Error pentru ${job.name}:`,
-                  err.message
-                );
+                console.error(`Eroare AI pentru ${job.name}:`, err.message);
               }
-            })
+            }),
           );
         }
-
-        console.log(`✅ [Background] Toate job-urile AI finalizate!`);
-      }, 1000); // Pornim după 1 secundă
+      }, 1000);
     }
   } catch (error) {
-    console.error('❌ [Upload] Eroare:', error);
+    console.error('Eroare la procesarea fișierului:', error);
     if (!res.headersSent) {
       res.status(500).json({ message: 'Eroare la procesarea fișierului.' });
     }
