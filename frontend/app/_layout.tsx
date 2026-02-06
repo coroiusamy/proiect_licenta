@@ -28,24 +28,25 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
               name="login"
-              options={{ title: 'Autentificare', presentation: 'modal' }}
+              options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen
               name="register"
-              options={{ title: 'Înregistrare', presentation: 'modal' }}
+              options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen
               name="forgot-password"
-              options={{ title: 'Resetare', presentation: 'modal' }}
+              options={{ headerShown: false, presentation: 'modal' }}
             />
             <Stack.Screen
               name="reset-password"
-              options={{ title: 'Confirmare', presentation: 'card' }}
+              options={{ headerShown: false, presentation: 'card' }}
             />
             <Stack.Screen
               name="add-analysis"
-              options={{ title: 'Adaugă', presentation: 'modal' }}
+              options={{ headerShown: false, presentation: 'modal' }}
             />
+            <Stack.Screen name="comparator" options={{ headerShown: false }} />
             <Stack.Screen
               name="buletin-detaliu"
               options={{ headerShown: false, presentation: 'card' }}
@@ -54,8 +55,10 @@ export default function RootLayout() {
               name="analiza-detaliu"
               options={{ headerShown: false, presentation: 'modal' }}
             />
-
-            <Stack.Screen name="chart-detaliu" options={{ title: 'Grafic' }} />
+            <Stack.Screen
+              name="chart-detaliu"
+              options={{ headerShown: false }}
+            />
           </Stack>
           <Toast config={toastConfig} />
           <StatusBar style="auto" />

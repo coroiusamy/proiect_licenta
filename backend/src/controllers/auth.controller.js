@@ -44,7 +44,7 @@ export const register = async (req, res) => {
       .status(201)
       .json({ message: 'Cont creat!', token, user: { id: newUser.id, email } });
   } catch (error) {
-    console.error(error);
+    console.error('Eroare la înregistrare:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -78,7 +78,7 @@ export const login = async (req, res) => {
       user: { email: user.email, firstName: user.firstName },
     });
   } catch (error) {
-    console.error(error);
+    console.error('Eroare la autentificare:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -103,7 +103,9 @@ export const googleAuth = async (req, res) => {
 
       // Verifică dacă token-ul este pentru aplicația noastră
       if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
-        return res.status(401).json({ message: 'Token Google invalid pentru această aplicație.' });
+        return res
+          .status(401)
+          .json({ message: 'Token Google invalid pentru această aplicație.' });
       }
 
       googleUserInfo = {
@@ -111,6 +113,7 @@ export const googleAuth = async (req, res) => {
         email: payload.email,
         firstName: payload.given_name || null,
         lastName: payload.family_name || null,
+        profilePicture: payload.picture || null,
       };
     }
     // Metoda 2: code flow cu PKCE (pentru web/Expo Go)
@@ -153,6 +156,7 @@ export const googleAuth = async (req, res) => {
         email: payload.email,
         firstName: payload.given_name || null,
         lastName: payload.family_name || null,
+        profilePicture: payload.picture || null,
       };
     }
     // Metoda 3: accessToken direct
@@ -174,12 +178,14 @@ export const googleAuth = async (req, res) => {
         email: payload.email,
         firstName: payload.given_name || null,
         lastName: payload.family_name || null,
+        profilePicture: payload.picture || null,
       };
     } else {
       return res.status(400).json({ message: 'Token Google lipsă.' });
     }
 
-    const { googleId, email, firstName, lastName } = googleUserInfo;
+    const { googleId, email, firstName, lastName, profilePicture } =
+      googleUserInfo;
 
     let user = await prisma.user.findUnique({ where: { googleId } });
 
@@ -195,7 +201,7 @@ export const googleAuth = async (req, res) => {
         }
         user = await prisma.user.update({
           where: { email },
-          data: { googleId },
+          data: { googleId, profilePicture },
         });
       } else {
         user = await prisma.user.create({
@@ -204,8 +210,17 @@ export const googleAuth = async (req, res) => {
             googleId,
             firstName,
             lastName,
+            profilePicture,
             authProvider: 'google',
           },
+        });
+      }
+    } else {
+      // Update profile picture on each login (in case it changed)
+      if (profilePicture && user.profilePicture !== profilePicture) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { profilePicture },
         });
       }
     }
@@ -220,7 +235,7 @@ export const googleAuth = async (req, res) => {
       user: { email: user.email, firstName: user.firstName },
     });
   } catch (error) {
-    console.error('Google Auth Error:', error);
+    console.error('Eroare autentificare Google:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -251,7 +266,7 @@ export const forgotPassword = async (req, res) => {
     await sendResetEmail(user.email, resetToken);
     res.status(200).json({ message: 'Instrucțiunile au fost trimise.' });
   } catch (error) {
-    console.error(error);
+    console.error('Eroare la resetare parolă:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -286,7 +301,7 @@ export const resetPassword = async (req, res) => {
 
     res.status(200).json({ message: 'Parolă schimbată!' });
   } catch (error) {
-    console.error(error);
+    console.error('Eroare la schimbarea parolei:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };

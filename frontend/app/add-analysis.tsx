@@ -235,7 +235,6 @@ export default function AddAnalysisScreen() {
                   keyboardType={isNumeric ? 'decimal-pad' : 'default'}
                 />
 
-                {/* --- FIX AICI: Verificare cu != null pentru a accepta 0 --- */}
                 {typeInfo.refMin != null && typeInfo.refMax != null && (
                   <Text style={styles.hint}>
                     {`Normal: ${typeInfo.refMin} - ${typeInfo.refMax}${
@@ -350,7 +349,7 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   backButton: { marginRight: 15, padding: 5 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 2 },
+  headerTitle: { fontSize: 32, fontWeight: 'bold', marginBottom: 2 },
   headerSubtitle: { fontSize: 14, opacity: 0.7 },
   form: { paddingHorizontal: 20 },
   formGroup: { marginBottom: 20 },

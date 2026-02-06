@@ -14,8 +14,9 @@ model User {
   password  String?
   createdAt DateTime @default(now())
 
-  googleId    String?  @unique
-  authProvider String  @default("local") // "local" or "google"
+  googleId       String?  @unique
+  authProvider   String   @default("local") // "local" or "google"
+  profilePicture String?  // URL to profile picture (from Google or uploaded)
 
   // --- Informații Personale ---
   firstName   String?

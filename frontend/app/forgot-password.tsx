@@ -91,52 +91,55 @@ export default function ForgotPasswordScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-          <ThemedText style={styles.title}>Resetare Parolă</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Introdu adresa de email asociată contului tău și îți vom trimite un
-            cod de resetare.
-          </ThemedText>
-
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: inputBg, color: inputColor },
-            ]}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            placeholderTextColor={placeholderColor}
-            returnKeyType="done"
-            onSubmitEditing={handleResetRequest}
-          />
-
-          <TouchableOpacity
-            style={[styles.buttonContainer, isLoading && styles.buttonDisabled]}
-            onPress={handleResetRequest}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.buttonText}>TRIMITE CODUL</ThemedText>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.backLink}
-            onPress={() => router.back()}
-            disabled={isLoading}
-          >
-            <ThemedText style={{ color: isDark ? '#A1A1A6' : '#666' }}>
-              Înapoi la Autentificare
+            <ThemedText style={styles.title}>Resetare Parolă</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Introdu adresa de email asociată contului tău și îți vom trimite
+              un cod de resetare.
             </ThemedText>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ThemedView>
+
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: inputBg, color: inputColor },
+              ]}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              placeholderTextColor={placeholderColor}
+              returnKeyType="done"
+              onSubmitEditing={handleResetRequest}
+            />
+
+            <TouchableOpacity
+              style={[
+                styles.buttonContainer,
+                isLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleResetRequest}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ThemedText style={styles.buttonText}>TRIMITE CODUL</ThemedText>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backLink}
+              onPress={() => router.back()}
+              disabled={isLoading}
+            >
+              <ThemedText style={{ color: isDark ? '#A1A1A6' : '#666' }}>
+                Înapoi la Autentificare
+              </ThemedText>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ThemedView>
     </SafeAreaView>
   );
 }
@@ -149,18 +152,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: 'gray',
-    textAlign: 'center',
+    opacity: 0.7,
     marginBottom: 30,
     lineHeight: 22,
-    paddingHorizontal: 10,
   },
   input: {
     height: 50,

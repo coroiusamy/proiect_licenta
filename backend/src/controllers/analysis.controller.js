@@ -42,7 +42,7 @@ export const getMyResults = async (req, res) => {
   }
 };
 
-// ✅ OPTIMIZAT: AI DOAR pentru valori ANORMALE!
+// Adaugă o analiză nouă (cu AI doar pentru valori anormale)
 export const addAnalysisResult = async (req, res) => {
   try {
     const userId = req.userId;
@@ -53,8 +53,6 @@ export const addAnalysisResult = async (req, res) => {
         .status(400)
         .json({ message: 'Tipul analizei și data sunt obligatorii.' });
     }
-
-    console.log('📝 Primire cerere adăugare analiză...');
 
     // Caută tipul de analiză
     const type = await prisma.analysisType.findUnique({
@@ -76,13 +74,7 @@ export const addAnalysisResult = async (req, res) => {
       else if (numValue > type.refMax) status = 'high';
     }
 
-    console.log(
-      `📊 Status calculat: ${status} (valoare: ${numValue}, interval: ${type.refMin}-${type.refMax})`
-    );
-
-    // ============================================
-    // ✅ OPTIMIZARE: AI DOAR PENTRU ANORMALE!
-    // ============================================
+    // AI doar pentru valori anormale
     let initialAiAdvice = null;
 
     // Dacă e NORMAL → mesaj generic INSTANT (fără AI!)
@@ -92,8 +84,6 @@ export const addAnalysisResult = async (req, res) => {
       } este în intervalul normal (${type.refMin}-${
         type.refMax
       }).\n\nFelicitări! Această valoare indică o stare bună de sănătate. Continuă să menții acest echilibru prin alimentație sănătoasă și activitate fizică regulată.\n\nAcesta este un sfat informativ. Consultă medicul pentru evaluare completă.`;
-
-      console.log(`✅ [Instant] Status NORMAL → mesaj generic (fără AI)`);
     }
 
     // Salvează în DB
@@ -111,34 +101,25 @@ export const addAnalysisResult = async (req, res) => {
       include: { analysisType: true }, // Returnăm tipul ca să avem numele în frontend
     });
 
-    // Răspunde IMEDIAT clientului 🚀
+    // Răspunde IMEDIAT clientului
     res.status(201).json({
       message: 'Analiză adăugată cu succes!',
       data: newResult,
     });
 
-    // ============================================
-    // AI GENERARE ÎN BACKGROUND - DOAR PENTRU ANORMALE!
-    // ============================================
+    // AI generare în background - doar pentru valori anormale
     const finalValue = numValue !== null ? numValue : stringValue;
 
     if (status !== 'normal' && finalValue) {
-      // 🔥 AICI AM ADĂUGAT SETTIMEOUT PENTRU SIGURANȚĂ
       setTimeout(async () => {
         try {
-          console.log(
-            `🚨 [Background] Status ${status.toUpperCase()} → Generăm AI pentru ID: ${
-              newResult.id
-            }...`
-          );
-
           const aiAdvice = await generateWellnessAdvice(
             type.name,
             finalValue,
             type.unit || '',
             status,
             type.refMin,
-            type.refMax
+            type.refMax,
           );
 
           if (aiAdvice) {
@@ -146,23 +127,14 @@ export const addAnalysisResult = async (req, res) => {
               where: { id: newResult.id },
               data: { aiAdvice: aiAdvice },
             });
-            console.log(
-              `✅ [Background] Sfat AI salvat pentru ID: ${newResult.id}`
-            );
-          } else {
-            console.log(`⚠️ [Background] AI nu a generat răspuns.`);
           }
         } catch (bgError) {
           console.error(
-            `❌ [Background] Eroare generare AI pentru ID: ${newResult.id}`,
-            bgError
+            `Eroare generare AI pentru ID: ${newResult.id}`,
+            bgError,
           );
         }
-      }, 100); // Așteaptă 100ms ca să fie sigur că telefonul a primit răspunsul
-    } else if (status === 'normal') {
-      console.log(`ℹ️ [Skip AI] Status NORMAL → Mesaj deja setat.`);
-    } else {
-      console.log(`ℹ️ [Skip AI] Nu sunt date suficiente pentru AI.`);
+      }, 100);
     }
   } catch (error) {
     console.error('Eroare la adăugarea analizei:', error);

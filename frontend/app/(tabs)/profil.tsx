@@ -11,12 +11,15 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ActionSheetIOS,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import * as ImagePicker from 'expo-image-picker';
 
 import { useAuth } from '@/context/AuthContext';
 
@@ -30,6 +33,7 @@ export default function ProfilScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const [userData, setUserData] = useState({
     email: '',
@@ -39,6 +43,8 @@ export default function ProfilScreen() {
     gender: '',
     height: '',
     weight: '',
+    profilePicture: '',
+    authProvider: '',
   });
 
   const [editData, setEditData] = useState({ ...userData });
@@ -46,7 +52,7 @@ export default function ProfilScreen() {
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
   const inputBg = isDark ? '#1C1C1E' : '#FFFFFF';
-  const placeholderColor = isDark ? '#8E8E93' : '#8E8E93';
+  const placeholderColor = '#8E8E93';
 
   useEffect(() => {
     fetchUserData();
@@ -68,6 +74,8 @@ export default function ProfilScreen() {
         gender: response.data.gender || '',
         height: response.data.height?.toString() || '',
         weight: response.data.weight?.toString() || '',
+        profilePicture: response.data.profilePicture || '',
+        authProvider: response.data.authProvider || '',
       };
 
       setUserData(data);
@@ -122,6 +130,177 @@ export default function ProfilScreen() {
   const handleCancel = () => {
     setEditData(userData);
     setIsEditing(false);
+  };
+
+  // Helper function to get full image URL
+  const getProfileImageUrl = (profilePicture: string) => {
+    if (!profilePicture) return null;
+    // If it's already a full URL (Google), return as-is
+    if (profilePicture.startsWith('http')) return profilePicture;
+    // Otherwise, it's a local path, prepend the API URL
+    return `${API_URL}${profilePicture}`;
+  };
+
+  const pickImage = async (useCamera: boolean) => {
+    try {
+      // Request permissions
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permisiune necesară',
+            'Trebuie să permiți accesul la cameră.',
+          );
+          return;
+        }
+      } else {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permisiune necesară',
+            'Trebuie să permiți accesul la galerie.',
+          );
+          return;
+        }
+      }
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          });
+
+      if (!result.canceled && result.assets[0]) {
+        uploadAvatar(result.assets[0].uri);
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Nu s-a putut selecta imaginea.',
+      });
+    }
+  };
+
+  const uploadAvatar = async (uri: string) => {
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('avatar', {
+        uri,
+        name: filename,
+        type,
+      } as any);
+
+      const response = await axios.post(
+        `${API_URL}/api/user/profile/avatar`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        },
+      );
+
+      setUserData((prev) => ({
+        ...prev,
+        profilePicture: response.data.profilePicture,
+      }));
+      setEditData((prev) => ({
+        ...prev,
+        profilePicture: response.data.profilePicture,
+      }));
+
+      Toast.show({
+        type: 'success',
+        text1: 'Succes!',
+        text2: 'Poza de profil a fost actualizată.',
+      });
+    } catch (error: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2:
+          error.response?.data?.message || 'Nu s-a putut încărca imaginea.',
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const deleteAvatar = async () => {
+    try {
+      await axios.delete(`${API_URL}/api/user/profile/avatar`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setUserData((prev) => ({ ...prev, profilePicture: '' }));
+      setEditData((prev) => ({ ...prev, profilePicture: '' }));
+
+      Toast.show({
+        type: 'success',
+        text1: 'Succes!',
+        text2: 'Poza de profil a fost ștearsă.',
+      });
+    } catch (error: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: error.response?.data?.message || 'Nu s-a putut șterge imaginea.',
+      });
+    }
+  };
+
+  const handleAvatarPress = () => {
+    if (Platform.OS === 'ios') {
+      const options = userData.profilePicture
+        ? ['Anulează', 'Fă o poză', 'Alege din galerie', 'Șterge poza']
+        : ['Anulează', 'Fă o poză', 'Alege din galerie'];
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: userData.profilePicture ? 3 : undefined,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) pickImage(true);
+          else if (buttonIndex === 2) pickImage(false);
+          else if (buttonIndex === 3 && userData.profilePicture) deleteAvatar();
+        },
+      );
+    } else {
+      // Android Alert
+      const buttons: any[] = [
+        { text: 'Anulează', style: 'cancel' },
+        { text: 'Fă o poză', onPress: () => pickImage(true) },
+        { text: 'Alege din galerie', onPress: () => pickImage(false) },
+      ];
+
+      if (userData.profilePicture) {
+        buttons.push({
+          text: 'Șterge poza',
+          style: 'destructive',
+          onPress: deleteAvatar,
+        });
+      }
+
+      Alert.alert('Schimbă poza de profil', 'Alege o opțiune:', buttons);
+    }
   };
 
   const handleLogout = () => {
@@ -228,16 +407,54 @@ export default function ProfilScreen() {
 
           {/* PROFILE AVATAR */}
           <View style={styles.avatarSection}>
-            <View style={[styles.avatar, { backgroundColor: '#007AFF20' }]}>
-              <Text style={styles.avatarText}>
-                {userData.firstName?.[0]}
-                {userData.lastName?.[0]}
-              </Text>
-            </View>
+            <TouchableOpacity
+              onPress={handleAvatarPress}
+              disabled={isUploadingAvatar}
+              activeOpacity={0.7}
+            >
+              <View style={styles.avatarContainer}>
+                {userData.profilePicture ? (
+                  <Image
+                    source={{
+                      uri: getProfileImageUrl(userData.profilePicture)!,
+                    }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View
+                    style={[styles.avatar, { backgroundColor: '#007AFF20' }]}
+                  >
+                    <Text style={styles.avatarText}>
+                      {userData.firstName?.[0]}
+                      {userData.lastName?.[0]}
+                    </Text>
+                  </View>
+                )}
+                {isUploadingAvatar ? (
+                  <View style={styles.avatarOverlay}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                ) : (
+                  <View style={styles.avatarEditBadge}>
+                    <MaterialIcons
+                      name="camera-alt"
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
             <Text style={[styles.userName, { color: textColor }]}>
               {userData.firstName} {userData.lastName}
             </Text>
             <Text style={styles.userEmail}>{userData.email}</Text>
+            {userData.authProvider === 'google' && (
+              <View style={styles.googleBadge}>
+                <MaterialIcons name="verified" size={14} color="#4285F4" />
+                <Text style={styles.googleBadgeText}>Google</Text>
+              </View>
+            )}
           </View>
 
           {/* BMI CARD */}
@@ -403,8 +620,8 @@ export default function ProfilScreen() {
                             editData.gender === 'Masculin'
                               ? '#007AFF'
                               : isDark
-                              ? '#2C2C2E'
-                              : '#F2F2F7',
+                                ? '#2C2C2E'
+                                : '#F2F2F7',
                         },
                       ]}
                       onPress={() => setEditData({ ...editData, gender: 'M' })}
@@ -444,8 +661,8 @@ export default function ProfilScreen() {
                             editData.gender === 'Feminin'
                               ? '#FF2D55'
                               : isDark
-                              ? '#2C2C2E'
-                              : '#F2F2F7',
+                                ? '#2C2C2E'
+                                : '#F2F2F7',
                         },
                       ]}
                       onPress={() => setEditData({ ...editData, gender: 'F' })}
@@ -486,9 +703,9 @@ export default function ProfilScreen() {
                         userData.gender === 'Masculin'
                           ? '#007AFF'
                           : userData.gender === 'F' ||
-                            userData.gender === 'Feminin'
-                          ? '#FF2D55'
-                          : '#8E8E93'
+                              userData.gender === 'Feminin'
+                            ? '#FF2D55'
+                            : '#8E8E93'
                       }
                     />
                     <Text
@@ -658,13 +875,45 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 16 },
   editHeaderButton: { padding: 8 },
   avatarSection: { alignItems: 'center', paddingVertical: 20 },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
   avatarText: {
     fontSize: 36,
@@ -673,6 +922,21 @@ const styles = StyleSheet.create({
   },
   userName: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
   userEmail: { fontSize: 16, color: '#8E8E93' },
+  googleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#4285F410',
+    borderRadius: 12,
+  },
+  googleBadgeText: {
+    fontSize: 12,
+    color: '#4285F4',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   bmiCard: {
     marginHorizontal: 20,
     padding: 20,

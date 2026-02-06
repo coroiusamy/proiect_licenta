@@ -52,7 +52,7 @@ export default function AnalysisDetailScreen() {
         });
 
         const updated = response.data.find(
-          (a: any) => a.id.toString() === analysisId
+          (a: any) => a.id.toString() === analysisId,
         );
 
         if (updated && updated.aiAdvice) {
@@ -67,7 +67,7 @@ export default function AnalysisDetailScreen() {
           });
         }
       } catch (error) {
-        console.error('Polling error:', error);
+        // Eroare silențioasă la polling - se va reîncerca
       }
     }, 3000); // La fiecare 3 secunde
 
@@ -90,7 +90,7 @@ export default function AnalysisDetailScreen() {
       });
 
       const found = response.data.find(
-        (a: any) => a.id.toString() === analysisId
+        (a: any) => a.id.toString() === analysisId,
       );
 
       if (found) {
@@ -160,9 +160,14 @@ export default function AnalysisDetailScreen() {
         >
           <MaterialIcons name="arrow-back" size={24} color={textColor} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>
-          Detalii Analiză
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: textColor }]}>
+            Detalii Analiză
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: textColor }]}>
+            {analysis?.analysisType?.name || 'Se încarcă...'}
+          </Text>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
@@ -318,9 +323,10 @@ export default function AnalysisDetailScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 20 },
-  backButton: { marginRight: 20 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 15 },
+  backButton: { padding: 4 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 2 },
+  headerSubtitle: { fontSize: 14, opacity: 0.7 },
 
   card: {
     padding: 24,

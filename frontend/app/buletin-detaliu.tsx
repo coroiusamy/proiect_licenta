@@ -46,7 +46,7 @@ export default function BulletinDetailScreen() {
       const filtered = response.data.filter(
         (a: any) =>
           new Date(a.date).toDateString() ===
-          new Date(bulletinDate).toDateString()
+          new Date(bulletinDate).toDateString(),
       );
       setAnalyses(filtered);
     } catch (error) {
@@ -147,9 +147,9 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 20 },
-  backButton: { marginRight: 15 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 15 },
+  backButton: { padding: 4 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 2 },
   headerSubtitle: { fontSize: 14, opacity: 0.7 },
   card: {
     flexDirection: 'row',
