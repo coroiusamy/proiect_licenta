@@ -17,6 +17,7 @@ model User {
   googleId       String?  @unique
   authProvider   String   @default("local") // "local" or "google"
   profilePicture String?  // URL to profile picture (from Google or uploaded)
+  role           String   @default("patient") // "patient" or "doctor"
 
   // --- Informații Personale ---
   firstName   String?
@@ -24,15 +25,46 @@ model User {
   dateOfBirth DateTime?
   gender      String?
   
-  // --- Biometrie ---
+  // --- Biometrie (doar pentru pacienți) ---
   weight      Float?
   height      Float?
+
+  // --- Câmpuri Medic ---
+  specialty   String?  // Specializarea medicului (ex: "Cardiologie")
 
   // --- Câmpuri pentru Resetare Parolă ---
   resetPasswordToken   String?   @unique
   resetPasswordExpires DateTime?
   
   analysisResults AnalysisResult[]
+
+  // Relații Doctor-Pacient
+  generatedCodes  AccessCode[]      @relation("PatientCodes")
+  doctorLinks     DoctorPatient[]   @relation("DoctorLinks")   // Medicul are pacienți
+  patientLinks    DoctorPatient[]   @relation("PatientLinks")  // Pacientul are medici
+}
+
+// === COD DE ACCES TEMPORAR ===
+model AccessCode {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique  // Cod unic de 6 caractere
+  patientId Int
+  patient   User     @relation("PatientCodes", fields: [patientId], references: [id], onDelete: Cascade)
+  expiresAt DateTime // Expiră după 15 minute
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// === LEGĂTURA DOCTOR-PACIENT ===
+model DoctorPatient {
+  id        Int      @id @default(autoincrement())
+  doctorId  Int
+  doctor    User     @relation("DoctorLinks", fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId Int
+  patient   User     @relation("PatientLinks", fields: [patientId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([doctorId, patientId]) // Un medic nu poate fi legat de 2 ori de același pacient
 }
 
 // === BIBLIOTECA DE ANALIZE ===
