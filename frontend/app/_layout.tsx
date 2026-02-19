@@ -59,6 +59,14 @@ export default function RootLayout() {
               name="chart-detaliu"
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="share"
+              options={{ headerShown: false, presentation: 'card' }}
+            />
+            <Stack.Screen
+              name="patient-detail"
+              options={{ headerShown: false, presentation: 'card' }}
+            />
           </Stack>
           <Toast config={toastConfig} />
           <StatusBar style="auto" />

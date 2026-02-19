@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.routes.js';
 import analysisRoutes from './routes/analysis.routes.js';
 import userRoutes from './routes/user.routes.js';
 import priceRoutes from './routes/price.routes.js';
+import doctorRoutes from './routes/doctor.routes.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/analyses', analysisRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/prices', priceRoutes);
+app.use('/api/doctor', doctorRoutes);
 
 // Pornire server
 app.listen(PORT, () => {

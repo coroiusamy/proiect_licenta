@@ -26,7 +26,7 @@ import { useAuth } from '@/context/AuthContext';
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function ProfilScreen() {
-  const { token, logout } = useAuth();
+  const { token, role, logout } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -311,7 +311,6 @@ export default function ProfilScreen() {
         style: 'destructive',
         onPress: () => {
           logout();
-          router.replace('/login');
         },
       },
     ]);
@@ -457,8 +456,8 @@ export default function ProfilScreen() {
             )}
           </View>
 
-          {/* BMI CARD */}
-          {bmi && bmiInfo && (
+          {/* BMI CARD - doar pentru pacienți */}
+          {role === 'patient' && bmi && bmiInfo && (
             <View
               style={[
                 styles.bmiCard,
@@ -722,75 +721,81 @@ export default function ProfilScreen() {
             </View>
           </View>
 
-          {/* HEALTH INFO */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialIcons name="favorite" size={20} color="#007AFF" />
-              <Text style={[styles.sectionTitle, { color: textColor }]}>
-                Informații Sănătate
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.infoCard,
-                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
-              ]}
-            >
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Înălțime (cm)</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[
-                      styles.infoInput,
-                      { backgroundColor: inputBg, color: textColor },
-                    ]}
-                    value={editData.height}
-                    onChangeText={(text) =>
-                      setEditData({ ...editData, height: text })
-                    }
-                    placeholder="180"
-                    placeholderTextColor={placeholderColor}
-                    keyboardType="decimal-pad"
-                  />
-                ) : (
-                  <Text style={[styles.infoValue, { color: textColor }]}>
-                    {userData.height ? `${userData.height} cm` : 'Nespecificat'}
-                  </Text>
-                )}
+          {/* HEALTH INFO - doar pentru pacienți */}
+          {role === 'patient' && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialIcons name="favorite" size={20} color="#007AFF" />
+                <Text style={[styles.sectionTitle, { color: textColor }]}>
+                  Informații Sănătate
+                </Text>
               </View>
 
               <View
                 style={[
-                  styles.infoDivider,
-                  { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                  styles.infoCard,
+                  { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
                 ]}
-              />
+              >
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Înălțime (cm)</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[
+                        styles.infoInput,
+                        { backgroundColor: inputBg, color: textColor },
+                      ]}
+                      value={editData.height}
+                      onChangeText={(text) =>
+                        setEditData({ ...editData, height: text })
+                      }
+                      placeholder="180"
+                      placeholderTextColor={placeholderColor}
+                      keyboardType="decimal-pad"
+                    />
+                  ) : (
+                    <Text style={[styles.infoValue, { color: textColor }]}>
+                      {userData.height
+                        ? `${userData.height} cm`
+                        : 'Nespecificat'}
+                    </Text>
+                  )}
+                </View>
 
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Greutate (kg)</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[
-                      styles.infoInput,
-                      { backgroundColor: inputBg, color: textColor },
-                    ]}
-                    value={editData.weight}
-                    onChangeText={(text) =>
-                      setEditData({ ...editData, weight: text })
-                    }
-                    placeholder="75"
-                    placeholderTextColor={placeholderColor}
-                    keyboardType="decimal-pad"
-                  />
-                ) : (
-                  <Text style={[styles.infoValue, { color: textColor }]}>
-                    {userData.weight ? `${userData.weight} kg` : 'Nespecificat'}
-                  </Text>
-                )}
+                <View
+                  style={[
+                    styles.infoDivider,
+                    { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                  ]}
+                />
+
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Greutate (kg)</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[
+                        styles.infoInput,
+                        { backgroundColor: inputBg, color: textColor },
+                      ]}
+                      value={editData.weight}
+                      onChangeText={(text) =>
+                        setEditData({ ...editData, weight: text })
+                      }
+                      placeholder="75"
+                      placeholderTextColor={placeholderColor}
+                      keyboardType="decimal-pad"
+                    />
+                  ) : (
+                    <Text style={[styles.infoValue, { color: textColor }]}>
+                      {userData.weight
+                        ? `${userData.weight} kg`
+                        : 'Nespecificat'}
+                    </Text>
+                  )}
+                </View>
               </View>
             </View>
-          </View>
+          )}
 
           {/* ACTION BUTTONS */}
           {isEditing ? (
@@ -822,16 +827,35 @@ export default function ProfilScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity
-              style={[
-                styles.logoutButton,
-                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
-              ]}
-              onPress={handleLogout}
-            >
-              <MaterialIcons name="logout" size={24} color="#FF3B30" />
-              <Text style={styles.logoutButtonText}>Deconectare</Text>
-            </TouchableOpacity>
+            <>
+              {role === 'patient' && (
+                <TouchableOpacity
+                  style={[
+                    styles.logoutButton,
+                    {
+                      backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                      marginBottom: 10,
+                    },
+                  ]}
+                  onPress={() => router.push('/share')}
+                >
+                  <MaterialIcons name="share" size={24} color="#007AFF" />
+                  <Text style={[styles.logoutButtonText, { color: '#007AFF' }]}>
+                    Partajare Date cu Medicul
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.logoutButton,
+                  { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
+                ]}
+                onPress={handleLogout}
+              >
+                <MaterialIcons name="logout" size={24} color="#FF3B30" />
+                <Text style={styles.logoutButtonText}>Deconectare</Text>
+              </TouchableOpacity>
+            </>
           )}
 
           {/* APP INFO */}

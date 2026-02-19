@@ -154,6 +154,7 @@ export default function ChartDetailScreen() {
 
   const typeId = params.typeId as string;
   const typeName = params.typeName as string;
+  const patientId = params.patientId as string | undefined;
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
@@ -182,13 +183,25 @@ export default function ChartDetailScreen() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/analyses`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = { Authorization: `Bearer ${token}` };
+      let relevantData;
 
-      const relevantData = response.data.filter(
-        (item: any) => item.analysisTypeId.toString() === typeId,
-      );
+      if (patientId) {
+        // Mod medic: preia datele pacientului via endpoint doctor
+        const response = await axios.get(
+          `${API_URL}/api/doctor/patient/${patientId}/chart/${typeId}`,
+          { headers },
+        );
+        relevantData = response.data;
+      } else {
+        // Mod pacient: preia propriile analize
+        const response = await axios.get(`${API_URL}/api/analyses`, {
+          headers,
+        });
+        relevantData = response.data.filter(
+          (item: any) => item.analysisTypeId.toString() === typeId,
+        );
+      }
 
       const sortedData = relevantData.sort(
         (a: any, b: any) =>
@@ -484,8 +497,12 @@ export default function ChartDetailScreen() {
             Istoric Detaliat
           </Text>
           {/* Afișăm invers cronologic (cel mai recent sus) */}
-          {[...filteredData].reverse().map((item) => (
-            <AnalysisItem key={item.id} item={item} isDark={isDark} />
+          {[...filteredData].reverse().map((item, index) => (
+            <AnalysisItem
+              key={item.id ?? `item-${index}`}
+              item={item}
+              isDark={isDark}
+            />
           ))}
         </View>
       </ScrollView>

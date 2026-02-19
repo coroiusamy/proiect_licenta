@@ -6,13 +6,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
-  const { token, isLoading } = useAuth();
+  const { token, role, isLoading } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const activeTintColor = '#007AFF';
   const inactiveTintColor = isDark ? '#8E8E93' : '#8E8E93';
   const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';
   const borderColor = isDark ? '#2C2C2E' : '#E5E5EA';
+
+  const isDoctor = role === 'doctor';
 
   if (isLoading) {
     return (
@@ -50,12 +52,9 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Acasă',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons
-              name={focused ? 'home' : 'home'}
-              size={28}
-              color={color}
-            />
+          href: isDoctor ? null : '/(tabs)',
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="home" size={28} color={color} />
           ),
         }}
       />
@@ -63,12 +62,9 @@ export default function TabLayout() {
         name="istoric"
         options={{
           title: 'Istoric',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons
-              name={focused ? 'history' : 'history'}
-              size={28}
-              color={color}
-            />
+          href: isDoctor ? null : '/(tabs)/istoric',
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="history" size={28} color={color} />
           ),
         }}
       />
@@ -76,10 +72,25 @@ export default function TabLayout() {
         name="adauga"
         options={{
           title: 'Adaugă',
+          href: isDoctor ? null : '/(tabs)/adauga',
           tabBarIcon: ({ color, focused }) => (
             <MaterialIcons
               name={focused ? 'add-circle' : 'add-circle-outline'}
               size={32}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="pacienti"
+        options={{
+          title: 'Pacienți',
+          href: isDoctor ? '/(tabs)/pacienti' : null,
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons
+              name={focused ? 'people' : 'people-outline'}
+              size={28}
               color={color}
             />
           ),

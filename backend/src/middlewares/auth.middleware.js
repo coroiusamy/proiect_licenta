@@ -11,14 +11,30 @@ export const protect = (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.userId = decoded.userId;
+      req.userRole = decoded.role || 'patient';
       next();
     } catch (error) {
-      console.error('Eroare la verificarea token-ului:', error);
-      res.status(401).json({ message: 'Neautorizat, token eșuat' });
+      return res.status(401).json({ message: 'Neautorizat, token eșuat' });
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Neautorizat, lipsește token-ul' });
+    return res.status(401).json({ message: 'Neautorizat, lipsește token-ul' });
   }
+};
+
+// Middleware: permite doar pacienților
+export const patientOnly = (req, res, next) => {
+  if (req.userRole !== 'patient') {
+    return res.status(403).json({ message: 'Acces permis doar pacienților.' });
+  }
+  next();
+};
+
+// Middleware: permite doar medicilor
+export const doctorOnly = (req, res, next) => {
+  if (req.userRole !== 'doctor') {
+    return res.status(403).json({ message: 'Acces permis doar medicilor.' });
+  }
+  next();
 };
