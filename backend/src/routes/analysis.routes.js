@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect } from '../middlewares/auth.middleware.js';
+import { protect, patientOnly } from '../middlewares/auth.middleware.js';
 
 import {
   getAllAnalysisTypes,
@@ -29,7 +29,7 @@ router.get('/', protect, getMyResults);
 
 // POST /api/analyses/
 // Adauga o analiza noua
-router.post('/', protect, addAnalysisResult);
+router.post('/', protect, patientOnly, addAnalysisResult);
 
 // GET /api/analyses/chart/:typeId
 // Incarca grafic analize
@@ -40,12 +40,13 @@ router.get('/chart/:typeId', protect, getChartData);
 router.post(
   '/upload',
   protect,
+  patientOnly,
   upload.single('analysisFile'),
-  uploadAnalysisFile
+  uploadAnalysisFile,
 );
 
 // DELETE /api/analyses/
 //sterge un buletin de analize pe o data specifica
-router.delete('/', protect, deleteAnalysesByDate);
+router.delete('/', protect, patientOnly, deleteAnalysesByDate);
 
 export default router;

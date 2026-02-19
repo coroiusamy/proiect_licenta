@@ -11,7 +11,7 @@ const TOKEN_EXPIRATION = '7d';
 // --- REGISTER ---
 export const register = async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, role, specialty } = req.body;
 
     if (!email || !password)
       return res.status(400).json({ message: 'Date incomplete.' });
@@ -21,6 +21,14 @@ export const register = async (req, res) => {
       return res
         .status(400)
         .json({ message: 'Parola slabă (min 8, majusculă, cifră).' });
+
+    const validRole = role === 'doctor' ? 'doctor' : 'patient';
+
+    if (validRole === 'doctor' && !specialty) {
+      return res
+        .status(400)
+        .json({ message: 'Specializarea este obligatorie pentru medici.' });
+    }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser)
@@ -34,15 +42,23 @@ export const register = async (req, res) => {
         firstName,
         lastName,
         authProvider: 'local',
+        role: validRole,
+        specialty: validRole === 'doctor' ? specialty : null,
       },
     });
 
-    const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET, {
-      expiresIn: TOKEN_EXPIRATION,
-    });
+    const token = jwt.sign(
+      { userId: newUser.id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRATION },
+    );
     res
       .status(201)
-      .json({ message: 'Cont creat!', token, user: { id: newUser.id, email } });
+      .json({
+        message: 'Cont creat!',
+        token,
+        user: { id: newUser.id, email, role: newUser.role },
+      });
   } catch (error) {
     console.error('Eroare la înregistrare:', error);
     res.status(500).json({ message: 'Eroare server.' });
@@ -69,13 +85,15 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Date incorecte.' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: TOKEN_EXPIRATION,
-    });
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRATION },
+    );
     res.status(200).json({
       message: 'Logat!',
       token,
-      user: { email: user.email, firstName: user.firstName },
+      user: { email: user.email, firstName: user.firstName, role: user.role },
     });
   } catch (error) {
     console.error('Eroare la autentificare:', error);
@@ -133,7 +151,6 @@ export const googleAuth = async (req, res) => {
       const tokenData = await tokenResponse.json();
 
       if (tokenData.error) {
-        console.error('Google token exchange error:', tokenData);
         return res
           .status(401)
           .json({ message: 'Eroare la autentificarea Google.' });
@@ -225,14 +242,16 @@ export const googleAuth = async (req, res) => {
       }
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: TOKEN_EXPIRATION,
-    });
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: TOKEN_EXPIRATION },
+    );
 
     res.status(200).json({
       message: 'Autentificare reușită!',
       token,
-      user: { email: user.email, firstName: user.firstName },
+      user: { email: user.email, firstName: user.firstName, role: user.role },
     });
   } catch (error) {
     console.error('Eroare autentificare Google:', error);
