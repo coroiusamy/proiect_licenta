@@ -12,6 +12,17 @@ import doctorRoutes from './routes/doctor.routes.js';
 
 dotenv.config();
 
+process.on('uncaughtException', (error) => {
+  console.error('[Server] uncaughtException', {
+    message: error?.message,
+    stack: error?.stack,
+  });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Server] unhandledRejection', reason);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

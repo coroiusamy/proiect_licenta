@@ -8,6 +8,7 @@ import {
   useColorScheme,
   ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -20,6 +21,11 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const CAMERA_SAFE_MODE_ANDROID = false;
+
+const logUpload = (...args: any[]) => {
+  console.log('[UploadFlow]', ...args);
+};
 
 export default function AdaugaScreen() {
   const { token } = useAuth();
@@ -27,7 +33,7 @@ export default function AdaugaScreen() {
   const isDark = colorScheme === 'dark';
 
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
@@ -35,6 +41,7 @@ export default function AdaugaScreen() {
 
   const pickPDF = async () => {
     try {
+      logUpload('pickPDF:start');
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/pdf',
         copyToCacheDirectory: true,
@@ -42,7 +49,12 @@ export default function AdaugaScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
-        setSelectedFile(file);
+        logUpload('pickPDF:selected', {
+          name: file?.name,
+          size: file?.size,
+          uri: file?.uri,
+        });
+        setSelectedFiles([file]);
         setFileType('pdf');
         Toast.show({
           type: 'success',
@@ -51,6 +63,7 @@ export default function AdaugaScreen() {
         });
       }
     } catch (error) {
+      logUpload('pickPDF:error', error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',
@@ -61,7 +74,20 @@ export default function AdaugaScreen() {
 
   const pickImage = async () => {
     try {
+      if (Platform.OS === 'android' && CAMERA_SAFE_MODE_ANDROID) {
+        logUpload('pickImage:safe_mode_android_redirect_to_gallery');
+        Toast.show({
+          type: 'info',
+          text1: 'Mod stabil Android',
+          text2: 'Folosim galeria pentru a evita închiderea aplicației.',
+        });
+        await pickImagesFromGallery();
+        return;
+      }
+
+      logUpload('pickImage:start_camera');
       const permission = await ImagePicker.requestCameraPermissionsAsync();
+      logUpload('pickImage:camera_permission', permission?.granted);
 
       if (!permission.granted) {
         Toast.show({
@@ -74,31 +100,108 @@ export default function AdaugaScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        quality: 1,
+        quality: 0.5,
         allowsEditing: false,
+        exif: false,
+      });
+      logUpload('pickImage:camera_result', {
+        canceled: result?.canceled,
+        assetsCount: result?.assets?.length || 0,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const image = result.assets[0];
-        setSelectedFile(image);
+        logUpload('pickImage:selected', {
+          uri: image?.uri,
+          fileSize: image?.fileSize,
+          size: image?.size,
+          mimeType: image?.mimeType,
+        });
+
+        // Protecție pentru fișiere foarte mari care pot duce la închidere pe Android
+        if ((image.fileSize || 0) > 12 * 1024 * 1024) {
+          Toast.show({
+            type: 'info',
+            text1: 'Imagine prea mare',
+            text2: 'Alege din galerie sau refă poza la rezoluție mai mică.',
+          });
+          return;
+        }
+
+        setSelectedFiles((prev) => [...prev, image]);
         setFileType('image');
         Toast.show({
           type: 'success',
           text1: 'Imagine capturată',
-          text2: 'Gata de încărcare',
+          text2: 'Imagine adăugată în listă',
         });
       }
     } catch (error) {
+      logUpload('pickImage:error_fallback_gallery', error);
+      // Pe unele build-uri Android, camera poate eșua intermitent; fallback la galerie
+      await pickImagesFromGallery();
+    }
+  };
+
+  const pickImagesFromGallery = async () => {
+    try {
+      logUpload('pickImagesFromGallery:start');
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      logUpload('pickImagesFromGallery:permission', permission?.granted);
+
+      if (!permission.granted) {
+        Toast.show({
+          type: 'error',
+          text1: 'Permisiune necesară',
+          text2: 'Acordă permisiunea pentru galerie.',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsMultipleSelection: true,
+        selectionLimit: 10,
+      });
+      logUpload('pickImagesFromGallery:result', {
+        canceled: result?.canceled,
+        assetsCount: result?.assets?.length || 0,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedFiles((prev) => {
+          const merged = [...prev, ...result.assets];
+          const uniqueByUri = merged.filter(
+            (item, idx, arr) => arr.findIndex((x) => x.uri === item.uri) === idx,
+          );
+          return uniqueByUri.slice(0, 10);
+        });
+        setFileType('image');
+
+        Toast.show({
+          type: 'success',
+          text1: 'Imagini selectate',
+          text2: `${result.assets.length} pagini adăugate`,
+        });
+      }
+    } catch (error) {
+      logUpload('pickImagesFromGallery:error', error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',
-        text2: 'Nu s-a putut captura imaginea.',
+        text2: 'Nu s-au putut selecta imaginile.',
       });
     }
   };
 
   const uploadFile = async () => {
-    if (!selectedFile) {
+    logUpload('uploadFile:start', {
+      fileType,
+      filesCount: selectedFiles.length,
+    });
+
+    if (selectedFiles.length === 0) {
       Toast.show({
         type: 'error',
         text1: 'Eroare',
@@ -112,15 +215,46 @@ export default function AdaugaScreen() {
     try {
       const formData = new FormData();
 
-      const fileToUpload: any = {
-        uri: selectedFile.uri,
-        type: fileType === 'pdf' ? 'application/pdf' : 'image/jpeg',
-        name:
-          selectedFile.name ||
-          `analysis_${Date.now()}.${fileType === 'pdf' ? 'pdf' : 'jpg'}`,
-      };
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const currentFile = selectedFiles[i];
+        const isPdfFile = fileType === 'pdf';
+        logUpload('uploadFile:prepare_file', {
+          index: i,
+          uri: currentFile?.uri,
+          name: currentFile?.name,
+          mimeType: currentFile?.mimeType,
+          size: currentFile?.size || currentFile?.fileSize || 0,
+        });
 
-      formData.append('analysisFile', fileToUpload);
+        if (!isPdfFile && (currentFile.size || currentFile.fileSize || 0) > 12 * 1024 * 1024) {
+          Toast.show({
+            type: 'error',
+            text1: 'Fișier prea mare',
+            text2: 'Una dintre imagini depășește 12MB. Redu dimensiunea și încearcă din nou.',
+          });
+          setIsUploading(false);
+          return;
+        }
+
+        const fileToUpload: any = {
+          uri:
+            Platform.OS === 'android' && currentFile.uri?.startsWith('file://')
+              ? currentFile.uri
+              : currentFile.uri,
+          type: currentFile.mimeType || (isPdfFile ? 'application/pdf' : 'image/jpeg'),
+          name:
+            currentFile.name ||
+            `analysis_${Date.now()}_${i}.${isPdfFile ? 'pdf' : 'jpg'}`,
+        };
+
+        formData.append(isPdfFile ? 'analysisFile' : 'analysisFiles', fileToUpload);
+      }
+
+      logUpload('uploadFile:request_send', {
+        endpoint: `${API_URL}/api/analyses/upload`,
+        mode: fileType,
+        filesCount: selectedFiles.length,
+      });
 
       const response = await axios.post(
         `${API_URL}/api/analyses/upload`,
@@ -134,19 +268,26 @@ export default function AdaugaScreen() {
         },
       );
 
+      logUpload('uploadFile:response_ok', response?.data);
+
       Toast.show({
         type: 'success',
         text1: 'Succes!',
-        text2: `${response.data.count} analize adăugate`,
+        text2: `${response.data.count} analize adăugate din ${selectedFiles.length} fișier(e)`,
       });
 
-      setSelectedFile(null);
+      setSelectedFiles([]);
       setFileType(null);
 
       setTimeout(() => {
         router.push('/istoric');
       }, 1500);
     } catch (error: any) {
+      logUpload('uploadFile:error', {
+        message: error?.message,
+        status: error?.response?.status,
+        data: error?.response?.data,
+      });
       Toast.show({
         type: 'error',
         text1: 'Eroare',
@@ -178,7 +319,7 @@ export default function AdaugaScreen() {
           </Text>
         </View>
 
-        {/* UPLOAD CARD */}
+        {/* SECȚIUNE ÎNCĂRCARE */}
         <View
           style={[
             styles.uploadCard,
@@ -194,14 +335,14 @@ export default function AdaugaScreen() {
             <MaterialIcons name="cloud-upload" size={64} color="#007AFF" />
           </View>
 
-          {selectedFile ? (
+          {selectedFiles.length > 0 ? (
             <View style={styles.fileInfo}>
               {fileType === 'image' ? (
-                <View style={styles.imagePreview}>
-                  <Image
-                    source={{ uri: selectedFile.uri }}
-                    style={styles.previewImage}
-                    resizeMode="cover"
+                <View style={styles.fileIconContainer}>
+                  <MaterialIcons
+                    name="photo-library"
+                    size={40}
+                    color="#34C759"
                   />
                 </View>
               ) : (
@@ -215,18 +356,19 @@ export default function AdaugaScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.fileName, { color: textColor }]}>
-                  {selectedFile.name ||
-                    `Imagine ${new Date().toLocaleDateString()}`}
+                  {fileType === 'pdf'
+                    ? selectedFiles[0]?.name || 'PDF selectat'
+                    : `${selectedFiles.length} imagine(i) selectată(e)`}
                 </Text>
-                {selectedFile.size && (
+                {selectedFiles[0]?.size && (
                   <Text style={styles.fileSize}>
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    {(selectedFiles.reduce((acc, file) => acc + (file.size || 0), 0) / 1024 / 1024).toFixed(2)} MB total
                   </Text>
                 )}
               </View>
               <TouchableOpacity
                 onPress={() => {
-                  setSelectedFile(null);
+                  setSelectedFiles([]);
                   setFileType(null);
                 }}
                 style={styles.removeButton}
@@ -246,7 +388,7 @@ export default function AdaugaScreen() {
             </>
           )}
 
-          {!selectedFile ? (
+          {selectedFiles.length === 0 ? (
             <View style={styles.buttonGroup}>
               <TouchableOpacity
                 style={[styles.selectButton, { backgroundColor: '#007AFF' }]}
@@ -265,29 +407,51 @@ export default function AdaugaScreen() {
                 <MaterialIcons name="camera-alt" size={24} color="#FFFFFF" />
                 <Text style={styles.selectButtonText}>Scanează Imagine</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.selectButton, { backgroundColor: '#5856D6' }]}
+                onPress={pickImagesFromGallery}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="photo-library" size={24} color="#FFFFFF" />
+                <Text style={styles.selectButtonText}>Alege imagini (multi)</Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity
-              style={[styles.uploadButton, { backgroundColor: '#FF9500' }]}
-              onPress={uploadFile}
-              disabled={isUploading}
-              activeOpacity={0.8}
-            >
-              {isUploading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <MaterialIcons name="upload" size={24} color="#FFFFFF" />
-                  <Text style={styles.uploadButtonText}>
-                    Încarcă și Procesează
-                  </Text>
-                </>
+            <View style={styles.buttonGroup}>
+              {fileType === 'image' && selectedFiles.length < 10 && (
+                <TouchableOpacity
+                  style={[styles.selectButton, { backgroundColor: '#5856D6' }]}
+                  onPress={pickImagesFromGallery}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="add-photo-alternate" size={24} color="#FFFFFF" />
+                  <Text style={styles.selectButtonText}>Adaugă pagini</Text>
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.uploadButton, { backgroundColor: '#FF9500' }]}
+                onPress={uploadFile}
+                disabled={isUploading}
+                activeOpacity={0.8}
+              >
+                {isUploading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <MaterialIcons name="upload" size={24} color="#FFFFFF" />
+                    <Text style={styles.uploadButtonText}>
+                      Încarcă și Procesează
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
-        {/* INSTRUCTIONS */}
+        {/* INSTRUCȚIUNI */}
         <View style={styles.instructionsSection}>
           <Text style={[styles.sectionTitle, { color: textColor }]}>
             Cum funcționează?
@@ -351,7 +515,7 @@ export default function AdaugaScreen() {
           </View>
         </View>
 
-        {/* INFO CARDS */}
+        {/* CARDURI INFORMAȚII */}
         <View style={styles.infoSection}>
           <View
             style={[
@@ -397,7 +561,7 @@ export default function AdaugaScreen() {
           </View>
         </View>
 
-        {/* ALTERNATIVE */}
+        {/* ALTERNATIVĂ */}
         <View style={styles.alternativeSection}>
           <View style={styles.divider}>
             <View
@@ -438,7 +602,7 @@ export default function AdaugaScreen() {
 }
 
 // ============================================
-// STYLES
+// STILURI
 // ============================================
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },

@@ -14,7 +14,13 @@ import multer from 'multer';
 const router = Router();
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: {
+    files: 10,
+    fileSize: 15 * 1024 * 1024,
+  },
+});
 
 // --- Rute Publice ---
 // Oricine (chiar și nelogat) poate vedea ce tipuri de analize există
@@ -41,7 +47,10 @@ router.post(
   '/upload',
   protect,
   patientOnly,
-  upload.single('analysisFile'),
+  upload.fields([
+    { name: 'analysisFile', maxCount: 1 },
+    { name: 'analysisFiles', maxCount: 10 },
+  ]),
   uploadAnalysisFile,
 );
 
