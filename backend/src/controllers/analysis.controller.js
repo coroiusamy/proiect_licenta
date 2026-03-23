@@ -13,7 +13,6 @@ export const getAllAnalysisTypes = async (req, res) => {
     });
     res.status(200).json(types);
   } catch (error) {
-    console.error('Eroare la preluarea tipurilor de analize:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -37,7 +36,6 @@ export const getMyResults = async (req, res) => {
 
     res.status(200).json(results);
   } catch (error) {
-    console.error('Eroare la preluarea rezultatelor:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -129,16 +127,11 @@ export const addAnalysisResult = async (req, res) => {
             });
           }
         } catch (bgError) {
-          console.error(
-            `Eroare generare AI pentru ID: ${newResult.id}`,
-            bgError,
-          );
+          // Eroarea AI nu afectează rezultatul salvat
         }
       }, 100);
     }
   } catch (error) {
-    console.error('Eroare la adăugarea analizei:', error);
-    // Verificăm dacă nu am trimis deja răspunsul
     if (!res.headersSent) {
       res.status(500).json({ message: 'Eroare server' });
     }
@@ -182,7 +175,6 @@ export const deleteAnalysesByDate = async (req, res) => {
       deletedCount: deleted.count,
     });
   } catch (error) {
-    console.error('Eroare la ștergerea analizelor:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -218,7 +210,6 @@ export const getChartData = async (req, res) => {
 
     res.status(200).json(results);
   } catch (error) {
-    console.error('Eroare la preluarea datelor pentru grafic:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -246,7 +237,6 @@ export const getAnalysisById = async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
-    console.error('Eroare la preluarea analizei:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };

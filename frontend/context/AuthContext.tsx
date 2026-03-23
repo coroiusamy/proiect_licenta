@@ -91,18 +91,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (error) => {
         const requestUrl = error.config?.url || '';
 
-        // Excludem rutele de autentificare din interceptor
+        // Excludere rute de autentificare din interceptor
         const isAuthRoute =
           requestUrl.includes('/auth/login') ||
           requestUrl.includes('/auth/register') ||
           requestUrl.includes('/auth/forgot-password') ||
           requestUrl.includes('/auth/reset-password');
-
-        // Dacă primim eroare 401 (Unauthorized) de la backend și NU e rută de auth
         if (error.response?.status === 401 && !isAuthRoute) {
           await logout();
-          // Nu mai aruncăm eroarea - utilizatorul e deja redirecționat la login
-          return new Promise(() => {}); // Promise care nu se rezolvă - oprește chain-ul
+          return new Promise(() => {});
         }
 
         return Promise.reject(error);

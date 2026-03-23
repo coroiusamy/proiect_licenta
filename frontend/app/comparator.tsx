@@ -42,7 +42,7 @@ export default function ComparatorScreen() {
   const [hasSearched, setHasSearched] = useState(false);
   const [mode, setMode] = useState<'single' | 'batch'>('single');
 
-  // Modal pentru breakdown
+  // Modal pentru detalii prețuri
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
@@ -65,7 +65,6 @@ export default function ComparatorScreen() {
     setSelectedAnalyses(selectedAnalyses.filter((a) => a !== name));
   };
 
-  // Căutare
   const searchPrices = async () => {
     // Single mode - verifică că ai query
     if (mode === 'single' && !query.trim()) {
@@ -617,7 +616,7 @@ export default function ComparatorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Header
+  // Antet
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -629,7 +628,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 2 },
   headerSubtitle: { fontSize: 14, opacity: 0.7 },
 
-  // Mode Selector
+  // Selector mod
   modeSelector: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -655,7 +654,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Search
+  // Căutare
   searchSection: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -685,7 +684,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Chips Container (Batch Mode)
+  // Etichete (mod batch)
   chipsContainer: {
     paddingHorizontal: 20,
     marginBottom: 15,
@@ -713,7 +712,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Result Count
+  // Număr rezultate
   resultCount: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -724,10 +723,10 @@ const styles = StyleSheet.create({
   countText: { fontSize: 14, fontWeight: '600' },
   rangeText: { fontSize: 13, color: '#8E8E93' },
 
-  // List
+  // Listă
   listContent: { paddingHorizontal: 20, paddingBottom: 30 },
 
-  // Card
+  // Card preț
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -755,7 +754,7 @@ const styles = StyleSheet.create({
   price: { fontSize: 24, fontWeight: 'bold' },
   currency: { fontSize: 12, color: '#8E8E93' },
 
-  // Loading
+  // Încărcare
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -781,7 +780,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Empty
+  // Fără rezultate
   empty: {
     flex: 1,
     justifyContent: 'center',
@@ -809,7 +808,7 @@ const styles = StyleSheet.create({
   },
   exampleChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
 
-  // Modal
+  // Modal detalii
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

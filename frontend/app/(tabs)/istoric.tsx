@@ -52,7 +52,7 @@ const BulletinCard = ({ bulletin, isDark, onPress, onDelete }: any) => {
           style: 'destructive',
           onPress: () => onDelete(bulletin.isoDate),
         },
-      ]
+      ],
     );
   };
 
@@ -162,10 +162,10 @@ export default function IstoricScreen() {
       const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
 
       const thisWeek = data.filter(
-        (a: any) => new Date(a.date) >= weekAgo
+        (a: any) => new Date(a.date) >= weekAgo,
       ).length;
       const thisMonth = data.filter(
-        (a: any) => new Date(a.date) >= monthAgo
+        (a: any) => new Date(a.date) >= monthAgo,
       ).length;
 
       const groupedByDate: { [key: string]: any[] } = {};
@@ -185,11 +185,11 @@ export default function IstoricScreen() {
             year: 'numeric',
           }),
           analyses: analyses.sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
           ),
         }))
         .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
 
       setBulletins(bulletinsArray);
@@ -230,7 +230,7 @@ export default function IstoricScreen() {
     try {
       await axios.delete(
         `${API_URL}/api/analyses?date=${encodeURIComponent(isoDate)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       Toast.show({
         type: 'success',
@@ -357,7 +357,6 @@ export default function IstoricScreen() {
   );
 }
 
-// ... Styles RĂMÂN IDENTICE ...
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },

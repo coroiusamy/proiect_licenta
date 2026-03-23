@@ -6,19 +6,19 @@ export const useTheme = () => {
 
   return {
     colors: {
-      // Primary
+      // Principal
       primary: '#007AFF',
       primaryDark: '#0051D5',
       primaryLight: 'rgba(0, 122, 255, 0.2)',
 
-      // Secondary
+      // Secundar
       secondary: '#5856D6',
       success: '#34C759',
       warning: '#FF9500',
       danger: '#FF3B30',
       info: '#00C7BE',
 
-      // Background
+      // Fundal
       background: isDark ? '#000000' : '#F8F9FA',
       surface: isDark ? '#1C1C1E' : '#FFFFFF',
       surface2: isDark ? '#2C2C2E' : '#F2F2F7',
@@ -27,10 +27,10 @@ export const useTheme = () => {
       text: isDark ? '#FFFFFF' : '#000000',
       textSecondary: isDark ? '#A1A1A6' : '#8E8E93',
 
-      // Border
+      // Bordură
       border: isDark ? '#38383A' : '#E5E5EA',
 
-      // Health-specific colors
+      // Culori specifice sănătății
       health: {
         glucose: '#FF9500',
         cholesterol: '#FF3B30',
@@ -99,7 +99,7 @@ export const useTheme = () => {
   };
 };
 
-// Helper function to get color for analysis type
+// Funcție ajutătoare pentru culoarea tipului de analiză
 export const getAnalysisTypeColor = (typeName: string): string => {
   const lower = typeName.toLowerCase();
   if (lower.includes('glucoz') || lower.includes('glicemi')) return '#FF9500';
@@ -111,7 +111,7 @@ export const getAnalysisTypeColor = (typeName: string): string => {
   return '#007AFF';
 };
 
-// Helper function to get icon for analysis type
+// Funcție ajutătoare pentru iconul tipului de analiză
 export const getAnalysisTypeIcon = (typeName: string): string => {
   const lower = typeName.toLowerCase();
   if (lower.includes('glucoz') || lower.includes('glicemi'))

@@ -173,7 +173,7 @@ export default function ChartDetailScreen() {
     processDataByPeriod('all', 3650);
   }, [allData]);
 
-  // Funcție Helper pentru conversie sigură
+  // Funcție ajutătoare pentru conversie sigură
   const safeParseFloat = (val: any) => {
     if (val === null || val === undefined) return NaN;
     if (typeof val === 'number') return val;

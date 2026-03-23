@@ -1,7 +1,6 @@
 export const scrapeSante = async (browser, analysisName) => {
   const results = [];
   try {
-    console.log('   -> 🟠 Scrape Sante...');
     const page = await browser.newPage();
 
     // Optimizare: Blocăm resursele inutile
@@ -12,7 +11,7 @@ export const scrapeSante = async (browser, analysisName) => {
     });
 
     const searchUrl = `https://www.clinica-sante.com/ro/?s=${encodeURIComponent(
-      analysisName
+      analysisName,
     )}`;
     await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
 
@@ -67,14 +66,11 @@ export const scrapeSante = async (browser, analysisName) => {
 
     if (data.length > 0) {
       results.push(...data);
-      console.log(`      ✅ Sante: ${data.length} rezultate.`);
-    } else {
-      console.log('      ⚠️ Sante: Nu am găsit produse în pagină.');
     }
 
     await page.close();
   } catch (err) {
-    console.error('   ❌ Eroare Sante:', err.message);
+    // Eroare la colectarea prețurilor Sante
   }
 
   return results;

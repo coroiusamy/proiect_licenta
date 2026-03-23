@@ -50,7 +50,7 @@ export default function LoginScreen() {
     try {
       await GoogleSignin.hasPlayServices();
 
-      // Sign out first to always show account picker
+      // Deconectare pentru a arăta mereu selectorul de conturi
       await GoogleSignin.signOut();
 
       const response = await GoogleSignin.signIn();

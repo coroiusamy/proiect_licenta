@@ -1,7 +1,6 @@
 export const scrapeMedlife = async (browser, analysisName) => {
   const results = [];
   try {
-    console.log('   -> 🔵 Scrape MedLife...');
     const page = await browser.newPage();
 
     // Optimizare: Blocăm resurse inutile
@@ -14,7 +13,7 @@ export const scrapeMedlife = async (browser, analysisName) => {
     // 1. Navigare directă pe pagina de rezultate
     ///cauta/analize/termen
     const searchUrl = `https://www.medlife.ro/cauta/analize/${encodeURIComponent(
-      analysisName
+      analysisName,
     )}`;
     await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
 
@@ -22,9 +21,6 @@ export const scrapeMedlife = async (browser, analysisName) => {
     try {
       await page.waitForSelector('.pret', { timeout: 5000 });
     } catch (e) {
-      console.log(
-        '      ⚠️ MedLife: Nu am găsit prețuri (posibil 0 rezultate).'
-      );
       await page.close();
       return [];
     }
@@ -64,12 +60,11 @@ export const scrapeMedlife = async (browser, analysisName) => {
 
     if (data.length > 0) {
       results.push(...data);
-      console.log(`      ✅ MedLife: ${data.length} rezultate.`);
     }
 
     await page.close();
   } catch (err) {
-    console.error('   ❌ Eroare MedLife:', err.message);
+    // Eroare la colectarea prețurilor MedLife
   }
 
   return results;

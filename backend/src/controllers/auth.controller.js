@@ -8,7 +8,7 @@ import { sendResetEmail } from '../services/emailService.js';
 const prisma = new PrismaClient();
 const TOKEN_EXPIRATION = '7d';
 
-// --- REGISTER ---
+// --- ÎNREGISTRARE ---
 export const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, role, specialty } = req.body;
@@ -52,20 +52,17 @@ export const register = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: TOKEN_EXPIRATION },
     );
-    res
-      .status(201)
-      .json({
-        message: 'Cont creat!',
-        token,
-        user: { id: newUser.id, email, role: newUser.role },
-      });
+    res.status(201).json({
+      message: 'Cont creat!',
+      token,
+      user: { id: newUser.id, email, role: newUser.role },
+    });
   } catch (error) {
-    console.error('Eroare la înregistrare:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
 
-// --- LOGIN ---
+// --- AUTENTIFICARE ---
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -96,19 +93,18 @@ export const login = async (req, res) => {
       user: { email: user.email, firstName: user.firstName, role: user.role },
     });
   } catch (error) {
-    console.error('Eroare la autentificare:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
 
-// --- GOOGLE AUTH ---
+// --- AUTENTIFICARE GOOGLE ---
 export const googleAuth = async (req, res) => {
   try {
     const { idToken, accessToken, code, redirectUri, codeVerifier } = req.body;
 
     let googleUserInfo = null;
 
-    // Metoda 1: idToken de la native Google Sign-In
+    // Metoda 1: idToken de la autentificarea nativă Google
     if (idToken) {
       const response = await fetch(
         `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
@@ -134,7 +130,7 @@ export const googleAuth = async (req, res) => {
         profilePicture: payload.picture || null,
       };
     }
-    // Metoda 2: code flow cu PKCE (pentru web/Expo Go)
+    // Metoda 2: flux cu cod PKCE (pentru web/Expo Go)
     else if (code) {
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -233,7 +229,7 @@ export const googleAuth = async (req, res) => {
         });
       }
     } else {
-      // Update profile picture on each login (in case it changed)
+      // Actualizează poza de profil la fiecare autentificare (dacă s-a schimbat)
       if (profilePicture && user.profilePicture !== profilePicture) {
         user = await prisma.user.update({
           where: { id: user.id },
@@ -254,12 +250,11 @@ export const googleAuth = async (req, res) => {
       user: { email: user.email, firstName: user.firstName, role: user.role },
     });
   } catch (error) {
-    console.error('Eroare autentificare Google:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
 
-// --- FORGOT PASSWORD ---
+// --- PAROLĂ UITATĂ ---
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -285,12 +280,11 @@ export const forgotPassword = async (req, res) => {
     await sendResetEmail(user.email, resetToken);
     res.status(200).json({ message: 'Instrucțiunile au fost trimise.' });
   } catch (error) {
-    console.error('Eroare la resetare parolă:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
 
-// --- RESET PASSWORD ---
+// --- RESETARE PAROLĂ ---
 export const resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -320,7 +314,6 @@ export const resetPassword = async (req, res) => {
 
     res.status(200).json({ message: 'Parolă schimbată!' });
   } catch (error) {
-    console.error('Eroare la schimbarea parolei:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };

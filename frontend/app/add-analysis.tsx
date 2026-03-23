@@ -58,7 +58,6 @@ export default function AddAnalysisScreen() {
         setSelectedType(response.data[0].id.toString());
       }
     } catch (error: any) {
-      console.error('Error fetching analysis types:', error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',
@@ -143,7 +142,6 @@ export default function AddAnalysisScreen() {
       // NAVIGHEAZĂ ÎNAPOI IMEDIAT
       router.back();
     } catch (error: any) {
-      console.error('Error submitting:', error);
       Toast.show({
         type: 'error',
         text1: 'Eroare',

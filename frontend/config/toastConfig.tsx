@@ -1,10 +1,9 @@
-// config/toastConfig.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 /**
- * SNACKBAR STYLE TOAST - Modern, Clean, Beautiful
+ * Configurație toast (stil snackbar modern)
  */
 
 export const toastConfig = {

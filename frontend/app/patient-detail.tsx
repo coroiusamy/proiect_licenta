@@ -142,7 +142,7 @@ export default function PatientDetailScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* PATIENT BANNER */}
+      {/* BANNER PACIENT */}
       <View style={[styles.banner, { backgroundColor: cardBg }]}>
         {avatarUri ? (
           <Image source={{ uri: avatarUri }} style={styles.bannerAvatar} />
@@ -180,7 +180,7 @@ export default function PatientDetailScreen() {
         </View>
       </View>
 
-      {/* TABS */}
+      {/* TAB-URI */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'analyses' && styles.tabActive]}
@@ -288,7 +288,7 @@ export default function PatientDetailScreen() {
           }
         />
       ) : (
-        /* PROFIL TAB */
+        /* TAB PROFIL */
         <View style={styles.profileContent}>
           <ProfileRow
             icon="email"

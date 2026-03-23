@@ -39,7 +39,6 @@ export const generateAccessCode = async (req, res) => {
       expiresAt: accessCode.expiresAt,
     });
   } catch (error) {
-    console.error('Eroare la generarea codului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -74,7 +73,6 @@ export const getMyDoctors = async (req, res) => {
 
     res.status(200).json(doctors);
   } catch (error) {
-    console.error('Eroare la preluarea medicilor:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -97,7 +95,6 @@ export const revokeDoctor = async (req, res) => {
 
     res.status(200).json({ message: 'Accesul medicului a fost revocat.' });
   } catch (error) {
-    console.error('Eroare la revocarea accesului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -174,7 +171,6 @@ export const linkPatient = async (req, res) => {
       message: `Pacientul ${patient?.firstName || ''} ${patient?.lastName || ''} a fost adăugat!`,
     });
   } catch (error) {
-    console.error('Eroare la asocierea pacientului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -212,7 +208,6 @@ export const getMyPatients = async (req, res) => {
 
     res.status(200).json(patients);
   } catch (error) {
-    console.error('Eroare la preluarea pacienților:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -248,7 +243,6 @@ export const getPatientAnalyses = async (req, res) => {
 
     res.status(200).json(sanitized);
   } catch (error) {
-    console.error('Eroare la preluarea analizelor pacientului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -285,7 +279,6 @@ export const getPatientChartData = async (req, res) => {
 
     res.status(200).json(results);
   } catch (error) {
-    console.error('Eroare la preluarea graficului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -331,7 +324,6 @@ export const getPatientProfile = async (req, res) => {
 
     res.status(200).json(patient);
   } catch (error) {
-    console.error('Eroare la preluarea profilului pacientului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };

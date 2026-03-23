@@ -35,7 +35,6 @@ export const getUserProfile = async (req, res) => {
 
     res.status(200).json(user);
   } catch (error) {
-    console.error('Eroare la preluarea profilului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
@@ -73,12 +72,11 @@ export const updateUserProfile = async (req, res) => {
 
     res.status(200).json({ message: 'Profil actualizat!', user: updatedUser });
   } catch (error) {
-    console.error('Eroare la actualizarea profilului:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
 
-// Upload profile picture
+// Încărcare poză de profil
 export const uploadProfilePicture = async (req, res) => {
   try {
     const userId = req.userId;
@@ -87,13 +85,13 @@ export const uploadProfilePicture = async (req, res) => {
       return res.status(400).json({ message: 'Nicio imagine selectată.' });
     }
 
-    // Get the current user to check for old avatar
+    // Preia utilizatorul curent pentru a verifica avatarul vechi
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { profilePicture: true },
     });
 
-    // Delete old local avatar if exists
+    // Șterge avatarul local vechi dacă există
     if (
       currentUser?.profilePicture &&
       currentUser.profilePicture.startsWith('/uploads/')
@@ -104,7 +102,7 @@ export const uploadProfilePicture = async (req, res) => {
       }
     }
 
-    // Build the URL path for the new avatar
+    // Construiește calea URL pentru noul avatar
     const profilePicture = `/uploads/avatars/${req.file.filename}`;
 
     const updatedUser = await prisma.user.update({
@@ -121,12 +119,11 @@ export const uploadProfilePicture = async (req, res) => {
       profilePicture: updatedUser.profilePicture,
     });
   } catch (error) {
-    console.error('Eroare la încărcarea pozei de profil:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };
 
-// Delete profile picture
+// Ștergere poză de profil
 export const deleteProfilePicture = async (req, res) => {
   try {
     const userId = req.userId;
@@ -136,7 +133,7 @@ export const deleteProfilePicture = async (req, res) => {
       select: { profilePicture: true },
     });
 
-    // Delete local file if exists
+    // Șterge fișierul local dacă există
     if (
       currentUser?.profilePicture &&
       currentUser.profilePicture.startsWith('/uploads/')
@@ -158,7 +155,6 @@ export const deleteProfilePicture = async (req, res) => {
 
     res.status(200).json({ message: 'Poza de profil ștearsă.' });
   } catch (error) {
-    console.error('Eroare la ștergerea pozei de profil:', error);
     res.status(500).json({ message: 'Eroare server.' });
   }
 };

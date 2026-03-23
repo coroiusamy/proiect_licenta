@@ -119,7 +119,7 @@ const HealthCard = ({
 };
 
 // ============================================
-// QUICK ACTION BUTTON COMPONENT
+// COMPONENT BUTON ACȚIUNE RAPIDĂ
 // ============================================
 const QuickActionButton = ({ icon, label, onPress, color, isDark }: any) => {
   const buttonBg = isDark ? '#2C2C2E' : '#F2F2F7';
