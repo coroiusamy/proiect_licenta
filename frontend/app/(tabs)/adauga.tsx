@@ -54,7 +54,6 @@ export default function AdaugaScreen() {
     setIsPickerBusy(false);
   };
 
-
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
 
@@ -66,7 +65,11 @@ export default function AdaugaScreen() {
 
       try {
         const pendingResult = await ImagePicker.getPendingResultAsync();
-        if (!pendingResult || pendingResult.canceled || !pendingResult.assets?.length) {
+        if (
+          !pendingResult ||
+          pendingResult.canceled ||
+          !pendingResult.assets?.length
+        ) {
           return;
         }
 
@@ -83,7 +86,8 @@ export default function AdaugaScreen() {
         setSelectedFiles((prev) => {
           const merged = [...prev, ...validAssets];
           const uniqueByUri = merged.filter(
-            (item, idx, arr) => arr.findIndex((x) => x.uri === item.uri) === idx,
+            (item, idx, arr) =>
+              arr.findIndex((x) => x.uri === item.uri) === idx,
           );
           return uniqueByUri.slice(0, 10);
         });
@@ -123,15 +127,21 @@ export default function AdaugaScreen() {
     const actions: any[] = [];
 
     if (maxDim > 3600) {
-      const targetWidth = (asset?.width || 0) >= (asset?.height || 0) ? 3600 : undefined;
-      const targetHeight = (asset?.height || 0) > (asset?.width || 0) ? 3600 : undefined;
+      const targetWidth =
+        (asset?.width || 0) >= (asset?.height || 0) ? 3600 : undefined;
+      const targetHeight =
+        (asset?.height || 0) > (asset?.width || 0) ? 3600 : undefined;
       actions.push({ resize: { width: targetWidth, height: targetHeight } });
     }
 
-    const manipulated = await manipulatorModule.manipulateAsync(asset.uri, actions, {
-      compress: sourceSize > MAX_IMAGE_SIZE_BYTES ? 0.78 : 0.88,
-      format: manipulatorModule.SaveFormat.JPEG,
-    });
+    const manipulated = await manipulatorModule.manipulateAsync(
+      asset.uri,
+      actions,
+      {
+        compress: sourceSize > MAX_IMAGE_SIZE_BYTES ? 0.78 : 0.88,
+        format: manipulatorModule.SaveFormat.JPEG,
+      },
+    );
 
     const compressedAsset = {
       ...asset,
@@ -266,7 +276,8 @@ export default function AdaugaScreen() {
     if (!acquirePickerLock()) return;
     try {
       logUpload('pickImagesFromGallery:start');
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       logUpload('pickImagesFromGallery:permission', permission?.granted);
 
       if (!permission.granted) {
@@ -298,7 +309,8 @@ export default function AdaugaScreen() {
         setSelectedFiles((prev) => {
           const merged = [...prev, ...validAssets];
           const uniqueByUri = merged.filter(
-            (item, idx, arr) => arr.findIndex((x) => x.uri === item.uri) === idx,
+            (item, idx, arr) =>
+              arr.findIndex((x) => x.uri === item.uri) === idx,
           );
           return uniqueByUri.slice(0, 10);
         });
@@ -381,7 +393,10 @@ export default function AdaugaScreen() {
           size: getAssetSize(currentFile),
         });
 
-        if (!isPdfFile && getAssetSize(currentFile) > RAW_IMAGE_ACCEPT_MAX_BYTES) {
+        if (
+          !isPdfFile &&
+          getAssetSize(currentFile) > RAW_IMAGE_ACCEPT_MAX_BYTES
+        ) {
           Toast.show({
             type: 'error',
             text1: 'Fișier prea mare',
@@ -396,13 +411,18 @@ export default function AdaugaScreen() {
             Platform.OS === 'android' && currentFile.uri?.startsWith('file://')
               ? currentFile.uri
               : currentFile.uri,
-          type: currentFile.mimeType || (isPdfFile ? 'application/pdf' : 'image/jpeg'),
+          type:
+            currentFile.mimeType ||
+            (isPdfFile ? 'application/pdf' : 'image/jpeg'),
           name:
             currentFile.name ||
             `analysis_${Date.now()}_${i}.${isPdfFile ? 'pdf' : 'jpg'}`,
         };
 
-        formData.append(isPdfFile ? 'analysisFile' : 'analysisFiles', fileToUpload);
+        formData.append(
+          isPdfFile ? 'analysisFile' : 'analysisFiles',
+          fileToUpload,
+        );
       }
 
       logUpload('uploadFile:request_send', {
@@ -517,7 +537,15 @@ export default function AdaugaScreen() {
                 </Text>
                 {selectedFiles[0]?.size && (
                   <Text style={styles.fileSize}>
-                    {(selectedFiles.reduce((acc, file) => acc + (file.size || 0), 0) / 1024 / 1024).toFixed(2)} MB total
+                    {(
+                      selectedFiles.reduce(
+                        (acc, file) => acc + (file.size || 0),
+                        0,
+                      ) /
+                      1024 /
+                      1024
+                    ).toFixed(2)}{' '}
+                    MB total
                   </Text>
                 )}
               </View>
@@ -571,7 +599,11 @@ export default function AdaugaScreen() {
                   onPress={pickImages}
                   activeOpacity={0.8}
                 >
-                  <MaterialIcons name="add-photo-alternate" size={24} color="#FFFFFF" />
+                  <MaterialIcons
+                    name="add-photo-alternate"
+                    size={24}
+                    color="#FFFFFF"
+                  />
                   <Text style={styles.selectButtonText}>Adaugă poze</Text>
                 </TouchableOpacity>
               )}
@@ -762,8 +794,12 @@ export default function AdaugaScreen() {
             onPress={() => {}}
           >
             <View style={styles.sheetHandle} />
-            <Text style={[styles.sheetTitle, { color: textColor }]}>Adaugă Poze</Text>
-            <Text style={[styles.sheetSubtitle, { color: textColor }]}>Alege camera sau galerie</Text>
+            <Text style={[styles.sheetTitle, { color: textColor }]}>
+              Adaugă Poze
+            </Text>
+            <Text style={[styles.sheetSubtitle, { color: textColor }]}>
+              Alege camera sau galerie
+            </Text>
 
             <TouchableOpacity
               style={[styles.sheetAction, { backgroundColor: '#007AFF' }]}

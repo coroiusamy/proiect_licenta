@@ -24,7 +24,9 @@ import { useAuth } from '@/context/AuthContext';
 
 // Suprimăm eroarea depreciată specifică pentru a nu bloca rularea
 import { LogBox } from 'react-native';
-LogBox.ignoreLogs(['Method downloadAsync imported from "expo-file-system" is deprecated']);
+LogBox.ignoreLogs([
+  'Method downloadAsync imported from "expo-file-system" is deprecated',
+]);
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const { width } = Dimensions.get('window');
@@ -166,7 +168,7 @@ export default function HomeScreen() {
     thisMonth: 0,
     lastUpdate: null as Date | null,
   });
-  
+
   const fetchDashboardData = useCallback(async () => {
     try {
       const profileRes = await axios.get(`${API_URL}/api/user/profile`, {
@@ -187,12 +189,15 @@ export default function HomeScreen() {
       setRecentAnalyses(sorted.slice(0, 5));
 
       try {
-        const summaryRes = await axios.get(`${API_URL}/api/analyses/health-summary`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const summaryRes = await axios.get(
+          `${API_URL}/api/analyses/health-summary`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
         setHealthSummary(summaryRes.data);
       } catch (err) {
-        console.error("Nu am putut incarca scorul de sanatate");
+        console.error('Nu am putut incarca scorul de sanatate');
       }
 
       const now = new Date();
@@ -220,7 +225,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchDashboardData();
-    }, [fetchDashboardData])
+    }, [fetchDashboardData]),
   );
 
   const onRefresh = () => {
@@ -256,24 +261,34 @@ export default function HomeScreen() {
         `${API_URL}/api/report/generate`,
         FileSystem.documentDirectory + `FisaMedicala.pdf`,
         {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
-      
+
       const { uri, status } = downloadRes;
 
       if (status === 200) {
         if (await Sharing.isAvailableAsync()) {
-           await Sharing.shareAsync(uri);
+          await Sharing.shareAsync(uri);
         } else {
-           Toast.show({ type: 'success', text1: 'Raport descărcat!', text2: uri, position: 'bottom' });
+          Toast.show({
+            type: 'success',
+            text1: 'Raport descărcat!',
+            text2: uri,
+            position: 'bottom',
+          });
         }
       } else {
         throw new Error(`Eroare status ${status}`);
       }
-    } catch(e: any) {
+    } catch (e: any) {
       console.error('Download err:', e);
-      Toast.show({ type: 'error', text1: 'Eroare', text2: e.message || 'Eroare necunoscută', position: 'bottom' });
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: e.message || 'Eroare necunoscută',
+        position: 'bottom',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -456,21 +471,58 @@ export default function HomeScreen() {
             >
               Sumar Sănătate Global
             </Text>
-            <View style={[styles.healthSummaryBox, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View
+              style={[
+                styles.healthSummaryBox,
+                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
+              ]}
+            >
               <View style={styles.healthScoreRow}>
                 <View style={styles.healthScoreCircle}>
-                  <Text style={[styles.healthScoreText, { color: healthSummary.score >= 80 ? '#34C759' : healthSummary.score >= 50 ? '#FF9500' : '#FF3B30' }]}>
+                  <Text
+                    style={[
+                      styles.healthScoreText,
+                      {
+                        color:
+                          healthSummary.score >= 80
+                            ? '#34C759'
+                            : healthSummary.score >= 50
+                              ? '#FF9500'
+                              : '#FF3B30',
+                      },
+                    ]}
+                  >
                     {healthSummary.score}
                   </Text>
                   <Text style={styles.healthScoreSub}>/100</Text>
                 </View>
-                <View style={{flex: 1, marginLeft: 15}}>
-                  <Text style={[styles.healthScoreLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>Scorul Tău Global</Text>
-                  <Text style={styles.healthScoreDesc}>Bazat pe ultimele tale {healthSummary.metrics?.total || 0} analize unice.</Text>
+                <View style={{ flex: 1, marginLeft: 15 }}>
+                  <Text
+                    style={[
+                      styles.healthScoreLabel,
+                      { color: isDark ? '#FFFFFF' : '#000000' },
+                    ]}
+                  >
+                    Scorul Tău Global
+                  </Text>
+                  <Text style={styles.healthScoreDesc}>
+                    Bazat pe ultimele tale {healthSummary.metrics?.total || 0}{' '}
+                    analize unice.
+                  </Text>
                 </View>
               </View>
-              <View style={[styles.healthSummarySeparator, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
-              <Text style={[styles.healthSummaryText, { color: isDark ? '#EBEBF5' : '#3A3A3C' }]}>
+              <View
+                style={[
+                  styles.healthSummarySeparator,
+                  { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.healthSummaryText,
+                  { color: isDark ? '#EBEBF5' : '#3A3A3C' },
+                ]}
+              >
                 {healthSummary.summary}
               </Text>
             </View>
@@ -507,7 +559,6 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -732,5 +783,5 @@ const styles = StyleSheet.create({
   healthSummaryText: {
     fontSize: 14,
     lineHeight: 20,
-  }
+  },
 });

@@ -156,7 +156,7 @@ export default function ChartDetailScreen() {
   const [newTreatmentDate, setNewTreatmentDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [stats, setStats] = useState({
     latest: 'N/A',
     average: 'N/A',
@@ -219,7 +219,9 @@ export default function ChartDetailScreen() {
         } else {
           // Fallback dacă încă nu e updatat array-ul
           relevantData = response.data.filter
-            ? response.data.filter((item: any) => item.analysisTypeId?.toString() === typeId)
+            ? response.data.filter(
+                (item: any) => item.analysisTypeId?.toString() === typeId,
+              )
             : response.data;
         }
       }
@@ -254,8 +256,10 @@ export default function ChartDetailScreen() {
       dataToProcess = dataToProcess.filter(
         (a) => new Date(a.date) >= cutoffDate,
       );
-      
-      const filteredTreat = treatments.filter((t) => new Date(t.startDate) >= cutoffDate);
+
+      const filteredTreat = treatments.filter(
+        (t) => new Date(t.startDate) >= cutoffDate,
+      );
       setFilteredTreatments(filteredTreat);
     } else {
       setFilteredTreatments(treatments);
@@ -340,10 +344,14 @@ export default function ChartDetailScreen() {
 
   const saveTreatment = async () => {
     if (!newTreatmentName.trim()) {
-      Toast.show({ type: 'error', text1: 'Eroare', text2: 'Te rugăm introdu numele medicamentului/tratamentului.' });
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Te rugăm introdu numele medicamentului/tratamentului.',
+      });
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       const response = await axios.post(
@@ -354,18 +362,26 @@ export default function ChartDetailScreen() {
           analysisTypeId: typeId,
         },
         {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
-      
-      Toast.show({ type: 'success', text1: 'Succes', text2: 'Tratament salvat cu succes.' });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Succes',
+        text2: 'Tratament salvat cu succes.',
+      });
       setModalVisible(false);
       setNewTreatmentName('');
-      
+
       // Refresh date
       fetchData();
-    } catch(err) {
-      Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu s-a putut salva tratamentul.' });
+    } catch (err) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Nu s-a putut salva tratamentul.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -374,12 +390,20 @@ export default function ChartDetailScreen() {
   const deleteTreatment = async (id: number) => {
     try {
       await axios.delete(`${API_URL}/api/treatments/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      Toast.show({ type: 'success', text1: 'Succes', text2: 'Tratament șters cu succes.' });
+      Toast.show({
+        type: 'success',
+        text1: 'Succes',
+        text2: 'Tratament șters cu succes.',
+      });
       fetchData(); // Refresh list&chart
-    } catch(err) {
-      Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu s-a putut șterge tratamentul.' });
+    } catch (err) {
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare',
+        text2: 'Nu s-a putut șterge tratamentul.',
+      });
     }
   };
 
@@ -515,14 +539,45 @@ export default function ChartDetailScreen() {
         {/* CHART */}
         {chartData ? (
           <View style={styles.chartSection}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-              <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 15,
+              }}
+            >
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: textColor, marginBottom: 0 },
+                ]}
+              >
                 Evoluție Grafică
               </Text>
               {!patientId && ( // Doar pacientii isi adauga tratament in acest flux
-                <TouchableOpacity onPress={() => setModalVisible(true)} style={{flexDirection: 'row', alignItems: 'center', backgroundColor: '#007AFF20', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10}}>
+                <TouchableOpacity
+                  onPress={() => setModalVisible(true)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#007AFF20',
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 10,
+                  }}
+                >
                   <MaterialIcons name="add" size={16} color="#007AFF" />
-                  <Text style={{color: '#007AFF', fontSize: 12, fontWeight: 'bold', marginLeft: 4}}>Tratament</Text>
+                  <Text
+                    style={{
+                      color: '#007AFF',
+                      fontSize: 12,
+                      fontWeight: 'bold',
+                      marginLeft: 4,
+                    }}
+                  >
+                    Tratament
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -562,17 +617,27 @@ export default function ChartDetailScreen() {
                   style={{ borderRadius: 16 }}
                   decorator={() => {
                     const dataPoints = chartData.datasets[0].data;
-                    if (dataPoints.length < 2 || filteredTreatments.length === 0) return null;
+                    if (
+                      dataPoints.length < 2 ||
+                      filteredTreatments.length === 0
+                    )
+                      return null;
                     const minDate = new Date(filteredData[0].date).getTime();
-                    const maxDate = new Date(filteredData[filteredData.length - 1].date).getTime();
+                    const maxDate = new Date(
+                      filteredData[filteredData.length - 1].date,
+                    ).getTime();
                     const timeSpan = maxDate - minDate;
 
                     if (timeSpan <= 0) return null;
-                    
-                    const chartWidth = Math.max(width - 40, chartData.labels.length * 60);
-                    const paddingLeft = 64; 
+
+                    const chartWidth = Math.max(
+                      width - 40,
+                      chartData.labels.length * 60,
+                    );
+                    const paddingLeft = 64;
                     const paddingRight = 16;
-                    const availableWidth = chartWidth - paddingLeft - paddingRight;
+                    const availableWidth =
+                      chartWidth - paddingLeft - paddingRight;
                     const step = availableWidth / (filteredData.length - 1);
 
                     return filteredTreatments.map((t, index) => {
@@ -581,50 +646,65 @@ export default function ChartDetailScreen() {
                         // Găsim segmentul exact dintre puncte (axele n-au date liniare pe ecran)
                         let indexRatio = 0;
                         for (let i = 0; i < filteredData.length - 1; i++) {
-                           const d1 = new Date(filteredData[i].date).getTime();
-                           const d2 = new Date(filteredData[i+1].date).getTime();
-                           if (tDate >= d1 && tDate <= d2) {
-                             const segmentRatio = d2 === d1 ? 0 : (tDate - d1) / (d2 - d1);
-                             indexRatio = i + segmentRatio;
-                             break;
-                           }
+                          const d1 = new Date(filteredData[i].date).getTime();
+                          const d2 = new Date(
+                            filteredData[i + 1].date,
+                          ).getTime();
+                          if (tDate >= d1 && tDate <= d2) {
+                            const segmentRatio =
+                              d2 === d1 ? 0 : (tDate - d1) / (d2 - d1);
+                            indexRatio = i + segmentRatio;
+                            break;
+                          }
                         }
-                        
+
                         const xCoord = paddingLeft + indexRatio * step;
-                        
+
                         return (
-                          <View key={index} style={{
-                            position: 'absolute',
-                            left: xCoord,
-                            top: 10,
-                            height: 180,
-                          }}>
-                            {/* Linia de marcaj verticala */}
-                            <View style={{
-                              width: 2,
-                              height: '100%',
-                              backgroundColor: '#FF3B30',
-                              opacity: 0.7,
-                            }} />
-                            {/* Container text imbunatatit */}
-                            <View style={{
+                          <View
+                            key={index}
+                            style={{
                               position: 'absolute',
-                              top: index % 2 === 0 ? 0 : 28, // Alterneaza pentru a preveni suprapunerea
-                              left: -50,
-                              backgroundColor: '#FF3B30',
-                              paddingHorizontal: 8,
-                              paddingVertical: 6,
-                              borderRadius: 8,
-                              width: 100,
-                              alignItems: 'center',
-                              shadowColor: "#000",
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 3,
-                              elevation: 4,
-                            }}>
-                              <Text 
-                                style={{ fontSize: 11, color: 'white', fontWeight: 'bold', textAlign: 'center' }} 
+                              left: xCoord,
+                              top: 10,
+                              height: 180,
+                            }}
+                          >
+                            {/* Linia de marcaj verticala */}
+                            <View
+                              style={{
+                                width: 2,
+                                height: '100%',
+                                backgroundColor: '#FF3B30',
+                                opacity: 0.7,
+                              }}
+                            />
+                            {/* Container text imbunatatit */}
+                            <View
+                              style={{
+                                position: 'absolute',
+                                top: index % 2 === 0 ? 0 : 28, // Alterneaza pentru a preveni suprapunerea
+                                left: -50,
+                                backgroundColor: '#FF3B30',
+                                paddingHorizontal: 8,
+                                paddingVertical: 6,
+                                borderRadius: 8,
+                                width: 100,
+                                alignItems: 'center',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 3,
+                                elevation: 4,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 11,
+                                  color: 'white',
+                                  fontWeight: 'bold',
+                                  textAlign: 'center',
+                                }}
                                 numberOfLines={2}
                               >
                                 {t.name}
@@ -655,11 +735,11 @@ export default function ChartDetailScreen() {
               Tratamente Adăugate
             </Text>
             {filteredTreatments.map((t, index) => (
-              <View 
-                key={t.id ?? `treat-${index}`} 
+              <View
+                key={t.id ?? `treat-${index}`}
                 style={{
-                  flexDirection: 'row', 
-                  justifyContent: 'space-between', 
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
                   backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
                   padding: 16,
@@ -673,16 +753,29 @@ export default function ChartDetailScreen() {
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor, marginBottom: 4 }}>{t.name}</Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 'bold',
+                      color: textColor,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t.name}
+                  </Text>
                   <Text style={{ fontSize: 13, color: '#8E8E93' }}>
                     Din {new Date(t.startDate).toLocaleDateString('ro-RO')}
                   </Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => deleteTreatment(t.id)}
                   style={{ padding: 8 }}
                 >
-                  <MaterialIcons name="delete-outline" size={24} color="#FF3B30" />
+                  <MaterialIcons
+                    name="delete-outline"
+                    size={24}
+                    color="#FF3B30"
+                  />
                 </TouchableOpacity>
               </View>
             ))}
@@ -706,30 +799,72 @@ export default function ChartDetailScreen() {
 
         {/* MODAL ADĂUGARE TRATAMENT */}
         <Modal visible={modalVisible} transparent={true} animationType="slide">
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ backgroundColor: isDark ? '#1C1C1E' : '#FFF', width: '90%', borderRadius: 16, padding: 20 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ fontSize: 18, fontWeight: 'bold', color: textColor }}>Adaugă Tratament Nou</Text>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: isDark ? '#1C1C1E' : '#FFF',
+                width: '90%',
+                borderRadius: 16,
+                padding: 20,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 20,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 18, fontWeight: 'bold', color: textColor }}
+                >
+                  Adaugă Tratament Nou
+                </Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <MaterialIcons name="close" size={24} color="#8E8E93" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={{ color: textColor, marginBottom: 8, fontSize: 14 }}>Nume Medicament / Tratament</Text>
+              <Text style={{ color: textColor, marginBottom: 8, fontSize: 14 }}>
+                Nume Medicament / Tratament
+              </Text>
               <TextInput
-                style={{ backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', color: textColor, borderRadius: 8, padding: 12, marginBottom: 20 }}
+                style={{
+                  backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
+                  color: textColor,
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 20,
+                }}
                 placeholder="Ex: Vitamina D 2000 UI"
                 placeholderTextColor="#8E8E93"
                 value={newTreatmentName}
                 onChangeText={setNewTreatmentName}
               />
 
-              <Text style={{ color: textColor, marginBottom: 8, fontSize: 14 }}>Data Începerii</Text>
+              <Text style={{ color: textColor, marginBottom: 8, fontSize: 14 }}>
+                Data Începerii
+              </Text>
               <TouchableOpacity
-                style={{ backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderRadius: 8, padding: 12, marginBottom: 20 }}
+                style={{
+                  backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 20,
+                }}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text style={{ color: textColor }}>{newTreatmentDate.toLocaleDateString('ro-RO')}</Text>
+                <Text style={{ color: textColor }}>
+                  {newTreatmentDate.toLocaleDateString('ro-RO')}
+                </Text>
               </TouchableOpacity>
 
               {showDatePicker && (
@@ -746,20 +881,28 @@ export default function ChartDetailScreen() {
               )}
 
               <TouchableOpacity
-                style={{ backgroundColor: '#007AFF', padding: 15, borderRadius: 10, alignItems: 'center' }}
+                style={{
+                  backgroundColor: '#007AFF',
+                  padding: 15,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                }}
                 onPress={saveTreatment}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Salvează pe Grafic</Text>
+                  <Text
+                    style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}
+                  >
+                    Salvează pe Grafic
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
-
       </ScrollView>
     </SafeAreaView>
   );

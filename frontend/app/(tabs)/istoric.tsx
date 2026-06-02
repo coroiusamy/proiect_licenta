@@ -214,7 +214,7 @@ export default function IstoricScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchAnalyses();
-    }, [fetchAnalyses])
+    }, [fetchAnalyses]),
   );
 
   const onRefresh = useCallback(() => {
