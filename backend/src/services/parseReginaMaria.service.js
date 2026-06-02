@@ -135,8 +135,8 @@ export const parseReginaMariaPdf = async (textContent, userId) => {
         analysisDate = new Date(
           `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(
             2,
-            '0'
-          )}`
+            '0',
+          )}`,
         );
         console.log('📅 Data găsită:', analysisDate.toISOString());
         break;
@@ -165,7 +165,10 @@ export const parseReginaMariaPdf = async (textContent, userId) => {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
   console.log(`📋 Linii procesabile: ${lines.length}`);
-  console.log(`\n📄 Primele 50 linii extrase:\n`, lines.slice(0, 50).join('\n'));
+  console.log(
+    `\n📄 Primele 50 linii extrase:\n`,
+    lines.slice(0, 50).join('\n'),
+  );
 
   for (let i = 0; i < lines.length - 3; i++) {
     const line1 = lines[i];
@@ -228,7 +231,7 @@ export const parseReginaMariaPdf = async (textContent, userId) => {
     // Verifică duplicate
     const isDuplicate = resultsToSave.some(
       (r) =>
-        r.analysisTypeId === matchedType.id && Math.abs(r.value - value) < 0.01
+        r.analysisTypeId === matchedType.id && Math.abs(r.value - value) < 0.01,
     );
 
     if (isDuplicate) {

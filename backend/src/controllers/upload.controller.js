@@ -66,7 +66,10 @@ const extractTextWithGoogleVision = async (imageBuffer) => {
     throw new Error(`Google Vision error: ${first.error.message}`);
   }
 
-  const text = first?.fullTextAnnotation?.text || first?.textAnnotations?.[0]?.description || '';
+  const text =
+    first?.fullTextAnnotation?.text ||
+    first?.textAnnotations?.[0]?.description ||
+    '';
   return {
     text,
     confidence: null,
@@ -85,7 +88,9 @@ function scoreOcrText(text) {
   const totalChars = Math.max(compact.length, 1);
   const weirdRatio = weirdSymbols / totalChars;
   const alphaNumRatio = (letters + digits) / totalChars;
-  const upperCaseWords = words.filter((w) => /^[A-ZĂÂÎȘȚ0-9]{3,}$/.test(w)).length;
+  const upperCaseWords = words.filter((w) =>
+    /^[A-ZĂÂÎȘȚ0-9]{3,}$/.test(w),
+  ).length;
 
   const medicalHints = (
     compact.match(
@@ -118,9 +123,10 @@ function scoreOcrText(text) {
 function buildVariantCompositeScore({ text, score, confidence }) {
   const conf = typeof confidence === 'number' ? confidence : 0;
   const compact = (text || '').replace(/\s+/g, ' ').trim();
-  const hasAnchors = /buletin analize medicale|denumire|interval de referinta|synevo/i.test(
-    compact,
-  );
+  const hasAnchors =
+    /buletin analize medicale|denumire|interval de referinta|synevo/i.test(
+      compact,
+    );
 
   let composite = score + conf * 45;
 
@@ -182,7 +188,10 @@ async function prepareImageVariantsForOcr(buffer) {
 
     variants.push({ name: 'enhanced_contrast', buffer: highContrast });
   } catch (err) {
-    ocrDebugLog('variant_failed', { variant: 'enhanced_contrast', message: err?.message });
+    ocrDebugLog('variant_failed', {
+      variant: 'enhanced_contrast',
+      message: err?.message,
+    });
   }
 
   try {
@@ -202,7 +211,10 @@ async function prepareImageVariantsForOcr(buffer) {
 
     variants.push({ name: 'enhanced_threshold', buffer: thresholded });
   } catch (err) {
-    ocrDebugLog('variant_failed', { variant: 'enhanced_threshold', message: err?.message });
+    ocrDebugLog('variant_failed', {
+      variant: 'enhanced_threshold',
+      message: err?.message,
+    });
   }
 
   return variants;
@@ -248,7 +260,8 @@ async function extractBestTextFromImage(worker, imageBuffer) {
   results.sort((a, b) => b.composite - a.composite);
   const best = results[0];
 
-  ocrDebugLog('variant_scores',
+  ocrDebugLog(
+    'variant_scores',
     results.map((r) => ({
       variant: r.variant,
       score: r.score,
@@ -330,7 +343,9 @@ export const uploadAnalysisFile = async (req, res) => {
   const activeProvider = resolveOcrProvider();
 
   try {
-    const hasPdf = uploadedFiles.some((file) => file.mimetype === 'application/pdf');
+    const hasPdf = uploadedFiles.some(
+      (file) => file.mimetype === 'application/pdf',
+    );
 
     if (hasPdf && uploadedFiles.length > 1) {
       console.log('[UploadAPI] invalid mix: pdf + images');
@@ -342,7 +357,9 @@ export const uploadAnalysisFile = async (req, res) => {
 
     // 1. Extragere text (PDF sau OCR multiplu)
     if (hasPdf) {
-      const pdfFile = uploadedFiles.find((file) => file.mimetype === 'application/pdf');
+      const pdfFile = uploadedFiles.find(
+        (file) => file.mimetype === 'application/pdf',
+      );
       console.log('[UploadAPI] process pdf', {
         name: pdfFile?.originalname,
         bytes: pdfFile?.size,
@@ -350,7 +367,9 @@ export const uploadAnalysisFile = async (req, res) => {
       const data = await pdf(pdfFile.buffer);
       textContent = data.text;
       useOcrHeuristics = false;
-    } else if (uploadedFiles.every((file) => file.mimetype.startsWith('image/'))) {
+    } else if (
+      uploadedFiles.every((file) => file.mimetype.startsWith('image/'))
+    ) {
       console.log('[UploadAPI] process images via OCR', {
         count: uploadedFiles.length,
         provider: activeProvider,

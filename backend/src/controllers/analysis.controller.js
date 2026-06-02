@@ -272,8 +272,9 @@ export const getHealthSummary = async (req, res) => {
     if (!results || results.length === 0) {
       return res.status(200).json({
         score: 0,
-        summary: "Nu există suficiente date pentru a calcula un scor de sănătate. Adaugă primele tale analize în sistem.",
-        metrics: { normal: 0, warning: 0, total: 0 }
+        summary:
+          'Nu există suficiente date pentru a calcula un scor de sănătate. Adaugă primele tale analize în sistem.',
+        metrics: { normal: 0, warning: 0, total: 0 },
       });
     }
 
@@ -297,17 +298,19 @@ export const getHealthSummary = async (req, res) => {
         normalCount++;
       } else {
         warningCount++;
-        abnormalDetails.push(`${r.analysisType.name}: ${r.value} ${r.analysisType.unit || ''} (${r.status})`);
+        abnormalDetails.push(
+          `${r.analysisType.name}: ${r.value} ${r.analysisType.unit || ''} (${r.status})`,
+        );
       }
     });
 
     // Score from 0 to 100
     const score = Math.round((normalCount / total) * 100);
-    
+
     // În practică aici se poate chema Ollama dacă există "abnormalDetails".
     // Dar vom returna un AI Advice pre-formulat sau un call rapid la AI Service dacă e nevoie.
     let summary = `Scorul tău este ${score} din 100. Din ultimele ${total} analize unice, ${normalCount} sunt în parametri optimi.`;
-    
+
     if (warningCount > 0) {
       summary += ` Totuși, au fost identificate ${warningCount} valori în afara limitelor normale: ${abnormalDetails.join(', ')}. Îți recomandăm să consulți un medic pentru acestea și să monitorizezi progresul!`;
     } else {
@@ -317,7 +320,7 @@ export const getHealthSummary = async (req, res) => {
     res.status(200).json({
       score,
       summary,
-      metrics: { normal: normalCount, warning: warningCount, total }
+      metrics: { normal: normalCount, warning: warningCount, total },
     });
   } catch (error) {
     console.error('getHealthSummary error: ', error);
@@ -352,7 +355,15 @@ export const generateMedicalReport = async (req, res) => {
       else warningCount++;
     });
     const latestResults = Array.from(latestResultsMap.values());
-    const score = latestResults.length > 0 ? Math.round((latestResults.filter(r => r.status === 'normal' || !r.status).length / latestResults.length) * 100) : 0;
+    const score =
+      latestResults.length > 0
+        ? Math.round(
+            (latestResults.filter((r) => r.status === 'normal' || !r.status)
+              .length /
+              latestResults.length) *
+              100,
+          )
+        : 0;
 
     // Generam HTML-ul prin EJS
     const templatePath = path.join(__dirname, '../templates/report.ejs');
@@ -360,7 +371,7 @@ export const generateMedicalReport = async (req, res) => {
       user,
       results,
       score,
-      metrics: { warning: warningCount }
+      metrics: { warning: warningCount },
     });
 
     // Generam PDF-ul cu Puppeteer
@@ -370,7 +381,7 @@ export const generateMedicalReport = async (req, res) => {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' }
+      margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
     });
     await browser.close();
 
@@ -378,11 +389,10 @@ export const generateMedicalReport = async (req, res) => {
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename=FisaMedicala_${user.firstName}_${user.lastName}.pdf`,
-      'Content-Length': pdfBuffer.length
+      'Content-Length': pdfBuffer.length,
     });
 
     res.status(200).send(pdfBuffer);
-
   } catch (error) {
     console.error('generateMedicalReport error:', error);
     res.status(500).json({ message: 'Eroare la generarea raportului pdf' });

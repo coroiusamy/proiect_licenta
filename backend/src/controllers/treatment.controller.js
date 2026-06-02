@@ -8,7 +8,9 @@ export const addTreatment = async (req, res) => {
     const { name, startDate, endDate, analysisTypeId } = req.body;
 
     if (!name || !startDate || !analysisTypeId) {
-      return res.status(400).json({ message: 'Nume, Dată și Tipul analizei sunt obligatorii.' });
+      return res
+        .status(400)
+        .json({ message: 'Nume, Dată și Tipul analizei sunt obligatorii.' });
     }
 
     const treatment = await prisma.treatment.create({
@@ -21,7 +23,9 @@ export const addTreatment = async (req, res) => {
       },
     });
 
-    res.status(201).json({ message: 'Tratament adăugat cu succes!', treatment });
+    res
+      .status(201)
+      .json({ message: 'Tratament adăugat cu succes!', treatment });
   } catch (error) {
     console.error('Error addTreatment:', error);
     res.status(500).json({ message: 'Eroare la adăugarea tratamentului' });
@@ -34,7 +38,7 @@ export const deleteTreatment = async (req, res) => {
     const { id } = req.params;
 
     const treatment = await prisma.treatment.findUnique({
-      where: { id: parseInt(id, 10) }
+      where: { id: parseInt(id, 10) },
     });
 
     if (!treatment) {
@@ -46,7 +50,7 @@ export const deleteTreatment = async (req, res) => {
     }
 
     await prisma.treatment.delete({
-      where: { id: parseInt(id, 10) }
+      where: { id: parseInt(id, 10) },
     });
 
     res.status(200).json({ message: 'Tratament șters cu succes' });

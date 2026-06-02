@@ -72,7 +72,9 @@ server.on('close', () => {
 
 server.on('error', (err) => {
   if (err?.code === 'EADDRINUSE') {
-    console.error(`[Server] Portul ${PORT} este deja folosit. Oprește instanța existentă sau schimbă PORT în .env.`);
+    console.error(
+      `[Server] Portul ${PORT} este deja folosit. Oprește instanța existentă sau schimbă PORT în .env.`,
+    );
     process.exit(1);
   }
   console.error('[Server] HTTP server error', err);

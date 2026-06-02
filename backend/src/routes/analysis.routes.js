@@ -7,7 +7,7 @@ import {
   addAnalysisResult,
   getChartData,
   deleteAnalysesByDate,
-  getHealthSummary
+  getHealthSummary,
 } from '../controllers/analysis.controller.js';
 import { uploadAnalysisFile } from '../controllers/upload.controller.js';
 import multer from 'multer';
