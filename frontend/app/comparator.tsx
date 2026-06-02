@@ -41,6 +41,7 @@ export default function ComparatorScreen() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [mode, setMode] = useState<'single' | 'batch'>('single');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   // Modal pentru detalii prețuri
   const [modalVisible, setModalVisible] = useState(false);
@@ -184,17 +185,24 @@ export default function ComparatorScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: cardBg }]}
+        style={[
+          styles.card, 
+          { 
+            backgroundColor: cardBg,
+            borderLeftWidth: 4,
+            borderLeftColor: clinicColor
+          }
+        ]}
         onPress={() => openLink(item.url)}
         activeOpacity={0.7}
       >
         {cheapest && (
           <View style={styles.firstBadge}>
-            <MaterialIcons name="emoji-events" size={14} color="#FFD700" />
+            <MaterialIcons name="emoji-events" size={16} color="#FFD700" />
           </View>
         )}
 
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingLeft: 4 }}>
           <Text style={[styles.clinicName, { color: clinicColor }]}>
             {item.clinic}
           </Text>
@@ -238,24 +246,31 @@ export default function ComparatorScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: cardBg }]}
+        style={[
+          styles.card, 
+          { 
+            backgroundColor: cardBg,
+            borderLeftWidth: 4,
+            borderLeftColor: clinicColor
+          }
+        ]}
         onPress={() => openPackageDetails(item)}
         activeOpacity={0.7}
       >
         {cheapest && (
           <View style={styles.firstBadge}>
-            <MaterialIcons name="emoji-events" size={14} color="#FFD700" />
+            <MaterialIcons name="emoji-events" size={16} color="#FFD700" />
           </View>
         )}
 
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingLeft: 4 }}>
           <Text style={[styles.clinicName, { color: clinicColor }]}>
             {item.clinic}
           </Text>
           <Text
             style={[
               styles.packageInfo,
-              { color: isComplete ? textColor : '#FF9500' },
+              { color: isComplete ? textColor : '#FF9500', fontWeight: '500' },
             ]}
           >
             {isComplete
@@ -306,7 +321,7 @@ export default function ComparatorScreen() {
       </View>
 
       {/* Mode Selector */}
-      <View style={styles.modeSelector}>
+      <View style={[styles.modeSelector, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA70' }]}>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'single' && styles.modeBtnActive]}
           onPress={() => setMode('single')}
@@ -337,7 +352,11 @@ export default function ComparatorScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchSection}>
-        <View style={[styles.searchBar, { backgroundColor: inputBg }]}>
+        <View style={[
+          styles.searchBar, 
+          { backgroundColor: inputBg },
+          searchFocused && styles.searchBarFocused
+        ]}>
           <MaterialIcons name="search" size={22} color="#8E8E93" />
           <TextInput
             style={[styles.input, { color: textColor }]}
@@ -347,6 +366,8 @@ export default function ComparatorScreen() {
             placeholderTextColor="#8E8E93"
             value={query}
             onChangeText={setQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             onSubmitEditing={() => {
               if (mode === 'batch') {
                 addAnalysis();
@@ -631,19 +652,25 @@ const styles = StyleSheet.create({
   // Selector mod
   modeSelector: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    marginHorizontal: 20,
     marginBottom: 15,
-    gap: 10,
+    borderRadius: 12,
+    padding: 3,
   },
   modeBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
+    paddingVertical: 10,
+    borderRadius: 9,
+    backgroundColor: 'transparent',
     alignItems: 'center',
   },
   modeBtnActive: {
     backgroundColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modeBtnText: {
     fontSize: 14,
@@ -667,11 +694,16 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 12,
     paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  searchBarFocused: {
+    borderColor: '#007AFF',
   },
   input: { flex: 1, fontSize: 16, marginLeft: 10 },
   searchBtn: {
@@ -682,6 +714,11 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   // Etichete (mod batch)

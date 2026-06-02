@@ -31,18 +31,32 @@ LogBox.ignoreLogs([
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const { width } = Dimensions.get('window');
 
+const getStatusColor = (status: string) => {
+  if (status === 'low') return '#FF9500';
+  if (status === 'high') return '#FF3B30';
+  return '#34C759';
+};
+
 const RecentAnalysisItem = ({ item, isDark, onPress }: any) => {
   const itemBg = isDark ? '#1C1C1E' : '#FFFFFF';
+  const statusColor = getStatusColor(item.status);
 
   return (
     <TouchableOpacity
-      style={[styles.recentItem, { backgroundColor: itemBg }]}
+      style={[
+        styles.recentItem, 
+        { 
+          backgroundColor: itemBg,
+          borderLeftWidth: 4,
+          borderLeftColor: statusColor,
+        }
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.recentItemContent}>
-        <View style={[styles.recentItemIcon, { backgroundColor: '#007AFF20' }]}>
-          <MaterialIcons name="assignment" size={20} color="#007AFF" />
+        <View style={[styles.recentItemIcon, { backgroundColor: statusColor + '15' }]}>
+          <MaterialIcons name="assignment" size={20} color={statusColor} />
         </View>
         <View style={{ flex: 1 }}>
           <Text
@@ -474,11 +488,25 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.healthSummaryBox,
-                { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' },
+                { 
+                  backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                  borderColor: healthSummary.score >= 80 ? '#34C75935' : healthSummary.score >= 50 ? '#FF950035' : '#FF3B3035',
+                  borderWidth: 1.5,
+                  shadowColor: healthSummary.score >= 80 ? '#34C759' : healthSummary.score >= 50 ? '#FF9500' : '#FF3B30',
+                },
               ]}
             >
               <View style={styles.healthScoreRow}>
-                <View style={styles.healthScoreCircle}>
+                <View 
+                  style={[
+                    styles.healthScoreCircle,
+                    {
+                      backgroundColor: healthSummary.score >= 80 ? '#34C75910' : healthSummary.score >= 50 ? '#FF950010' : '#FF3B3010',
+                      borderColor: healthSummary.score >= 80 ? '#34C75935' : healthSummary.score >= 50 ? '#FF950035' : '#FF3B3035',
+                      borderWidth: 1.5,
+                    }
+                  ]}
+                >
                   <Text
                     style={[
                       styles.healthScoreText,
@@ -496,7 +524,7 @@ export default function HomeScreen() {
                   </Text>
                   <Text style={styles.healthScoreSub}>/100</Text>
                 </View>
-                <View style={{ flex: 1, marginLeft: 15 }}>
+                <View style={{ flex: 1, marginLeft: 16 }}>
                   <Text
                     style={[
                       styles.healthScoreLabel,
@@ -514,13 +542,13 @@ export default function HomeScreen() {
               <View
                 style={[
                   styles.healthSummarySeparator,
-                  { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
+                  { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA', opacity: 0.5 },
                 ]}
               />
               <Text
                 style={[
                   styles.healthSummaryText,
-                  { color: isDark ? '#EBEBF5' : '#3A3A3C' },
+                  { color: isDark ? '#EBEBF5' : '#3A3A3C', lineHeight: 22 },
                 ]}
               >
                 {healthSummary.summary}
@@ -738,7 +766,7 @@ const styles = StyleSheet.create({
   healthSummaryBox: {
     borderRadius: 20,
     padding: 20,
-    marginHorizontal: 0,
+    marginHorizontal: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

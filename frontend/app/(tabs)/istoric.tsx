@@ -37,6 +37,12 @@ const StatsCard = ({ icon, label, value, color, isDark }: any) => {
   );
 };
 
+const getStatusColor = (status: string) => {
+  if (status === 'low') return '#FF9500';
+  if (status === 'high') return '#FF3B30';
+  return '#34C759';
+};
+
 const BulletinCard = ({ bulletin, isDark, onPress, onDelete }: any) => {
   const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#000000';
@@ -63,36 +69,39 @@ const BulletinCard = ({ bulletin, isDark, onPress, onDelete }: any) => {
       activeOpacity={0.7}
     >
       <View style={styles.bulletinHeader}>
-        <View style={[styles.bulletinIcon, { backgroundColor: '#007AFF20' }]}>
-          <MaterialIcons name="assignment" size={28} color="#007AFF" />
+        <View style={[styles.bulletinIcon, { backgroundColor: '#007AFF15' }]}>
+          <MaterialIcons name="assignment" size={26} color="#007AFF" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.bulletinDate, { color: textColor }]}>
             Buletin {bulletin.dateLabel}
           </Text>
-          <Text style={[styles.bulletinCount, { color: textColor }]}>
-            {bulletin.analyses.length} analize
+          <Text style={[styles.bulletinCount, { color: isDark ? '#8E8E93' : '#666' }]}>
+            {bulletin.analyses.length} analize înregistrate
           </Text>
         </View>
         <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-          <MaterialIcons name="delete" size={24} color="#FF3B30" />
+          <MaterialIcons name="delete" size={22} color="#FF3B30" />
         </TouchableOpacity>
       </View>
       <View style={styles.bulletinPreview}>
-        {bulletin.analyses.slice(0, 3).map((analysis: any, index: number) => (
-          <View key={index} style={styles.previewItem}>
-            <View style={[styles.previewDot, { backgroundColor: '#007AFF' }]} />
-            <Text
-              style={[styles.previewText, { color: textColor }]}
-              numberOfLines={1}
-            >
-              {analysis.analysisType.name}
-            </Text>
-            <Text style={[styles.previewValue, { color: textColor }]}>
-              {analysis.value || analysis.stringValue}
-            </Text>
-          </View>
-        ))}
+        {bulletin.analyses.slice(0, 3).map((analysis: any, index: number) => {
+          const dotColor = getStatusColor(analysis.status);
+          return (
+            <View key={index} style={styles.previewItem}>
+              <View style={[styles.previewDot, { backgroundColor: dotColor }]} />
+              <Text
+                style={[styles.previewText, { color: textColor }]}
+                numberOfLines={1}
+              >
+                {analysis.analysisType.name}
+              </Text>
+              <Text style={[styles.previewValue, { color: dotColor }]}>
+                {analysis.value || analysis.stringValue}
+              </Text>
+            </View>
+          );
+        })}
       </View>
       <View style={styles.bulletinFooter}>
         <MaterialIcons name="chevron-right" size={24} color="#007AFF" />

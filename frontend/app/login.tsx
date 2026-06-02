@@ -37,6 +37,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<'email' | 'password' | null>(null);
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -114,13 +115,14 @@ export default function LoginScreen() {
     }
   };
 
-  const inputBg = isDark ? '#2C2C2E' : '#F2F2F7';
+  const inputBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const inputColor = isDark ? '#FFFFFF' : '#000000';
-  const placeholderColor = isDark ? '#8E8E93' : '#C7C7CC';
+  const placeholderColor = isDark ? '#8E8E93' : '#A1A1A6';
+  const containerBg = isDark ? '#000000' : '#F8F9FA';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <ThemedView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: containerBg }]} edges={['top', 'bottom']}>
+      <ThemedView style={[styles.container, { backgroundColor: containerBg }]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -131,10 +133,17 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            {/* BRANDING LOGO */}
+            <View style={styles.logoSection}>
+              <View style={[styles.logoIconBg, { backgroundColor: '#007AFF15' }]}>
+                <MaterialIcons name="healing" size={36} color="#007AFF" />
+              </View>
+            </View>
+
             <View style={styles.headerSection}>
               <ThemedText style={styles.title}>Bine ai venit!</ThemedText>
               <ThemedText style={styles.subtitle}>
-                Conectează-te pentru a continua
+                Conectează-te pentru a-ți monitoriza sănătatea
               </ThemedText>
             </View>
 
@@ -142,6 +151,7 @@ export default function LoginScreen() {
               style={[
                 styles.input,
                 { backgroundColor: inputBg, color: inputColor },
+                focusedInput === 'email' && styles.inputFocused,
               ]}
               placeholder="Email"
               value={email}
@@ -151,12 +161,15 @@ export default function LoginScreen() {
               autoComplete="email"
               placeholderTextColor={placeholderColor}
               returnKeyType="next"
+              onFocus={() => setFocusedInput('email')}
+              onBlur={() => setFocusedInput(null)}
             />
 
             <TextInput
               style={[
                 styles.input,
                 { backgroundColor: inputBg, color: inputColor },
+                focusedInput === 'password' && styles.inputFocused,
               ]}
               placeholder="Parolă"
               value={password}
@@ -166,6 +179,8 @@ export default function LoginScreen() {
               autoComplete="password"
               returnKeyType="done"
               onSubmitEditing={handleLogin}
+              onFocus={() => setFocusedInput('password')}
+              onBlur={() => setFocusedInput(null)}
             />
 
             <TouchableOpacity
@@ -200,7 +215,7 @@ export default function LoginScreen() {
                   { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' },
                 ]}
               />
-              <ThemedText style={styles.dividerText}>sau</ThemedText>
+              <ThemedText style={styles.dividerText}>sau continuă cu</ThemedText>
               <View
                 style={[
                   styles.dividerLine,
@@ -212,22 +227,27 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={[
                 styles.googleButton,
-                { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' },
+                { 
+                  backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                  borderColor: isDark ? '#3A3A3C' : '#E5E5EA'
+                },
               ]}
               onPress={handleGoogleSignIn}
               disabled={isGoogleLoading || isLoading}
             >
               {isGoogleLoading ? (
-                <ActivityIndicator color="#4285F4" />
+                <ActivityIndicator color="#007AFF" />
               ) : (
                 <>
-                  <MaterialIcons
-                    name="g-mobiledata"
-                    size={28}
-                    color="#4285F4"
-                  />
+                  <View style={styles.googleIconWrapper}>
+                    <MaterialIcons
+                      name="health-and-safety"
+                      size={20}
+                      color="#007AFF"
+                    />
+                  </View>
                   <ThemedText style={styles.googleButtonText}>
-                    Continuă cu Google
+                    Google Account
                   </ThemedText>
                 </>
               )}
@@ -262,33 +282,73 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: 24,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  logoIconBg: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  logoText: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: '#007AFF',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
-    marginBottom: 30,
+    fontSize: 15,
+    opacity: 0.6,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   headerSection: {
     marginBottom: 10,
   },
   input: {
-    height: 50,
-    borderRadius: 12,
-    paddingHorizontal: 15,
+    height: 52,
+    borderRadius: 14,
+    paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  inputFocused: {
+    borderColor: '#007AFF',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
-    marginBottom: 20,
-    marginTop: -5,
-    padding: 5,
+    marginBottom: 24,
+    marginTop: -4,
+    padding: 4,
   },
   forgotPasswordText: {
     color: '#007AFF',
@@ -298,16 +358,15 @@ const styles = StyleSheet.create({
   buttonContainer: {
     backgroundColor: '#007AFF',
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
-    marginTop: 10,
-    height: 50,
+    height: 52,
     justifyContent: 'center',
     shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -315,34 +374,38 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   registerLink: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 24,
     padding: 10,
   },
   registerText: {
     fontSize: 15,
+    opacity: 0.7,
   },
   registerLinkText: {
     color: '#007AFF',
-    fontWeight: 'bold',
-    marginLeft: 5,
+    fontWeight: '700',
+    opacity: 1,
+    marginLeft: 4,
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 24,
   },
   dividerLine: {
     flex: 1,
     height: 1,
+    opacity: 0.5,
   },
   dividerText: {
-    marginHorizontal: 15,
+    marginHorizontal: 12,
     color: '#8E8E93',
     fontSize: 14,
   },
@@ -350,14 +413,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 50,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
-    gap: 8,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  googleIconWrapper: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#007AFF10',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#007AFF',
   },
 });
