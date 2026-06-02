@@ -1,8 +1,29 @@
-### Test Creare Cont Nou
-POST http://localhost:3000/api/auth/register
+
+@API_URL = http://localhost:3000/api
+
+### 1. Autentificare Utilizator (Obținere și stocare JWT)
+# @name loginAuth
+POST {{API_URL}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "test-din-vscode@email.com",
-  "password": "parola123"
+  "email": "samycoroiu@yahoo.com",
+  "password": "Samicoroiu2003"
+}
+
+### 2. Obținere Profil Utilizator Protejat (Extragere Automată Token)
+GET {{API_URL}}/user/profile
+Authorization: Bearer {{loginAuth.response.body.token}}
+Accept: application/json
+
+### 3. Actualizare Date Profil (PUT Request)
+PUT {{API_URL}}/user/profile
+Authorization: Bearer {{loginAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "firstName": "Ion",
+  "lastName": "Popescu",
+  "dob": "1990-05-15",
+  "gender": "MALE"
 }

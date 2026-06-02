@@ -165,6 +165,7 @@ export const parseReginaMariaPdf = async (textContent, userId) => {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
   console.log(`📋 Linii procesabile: ${lines.length}`);
+  console.log(`\n📄 Primele 50 linii extrase:\n`, lines.slice(0, 50).join('\n'));
 
   for (let i = 0; i < lines.length - 3; i++) {
     const line1 = lines[i];

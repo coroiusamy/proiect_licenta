@@ -515,6 +515,74 @@ const parseAnalysisBlock = (block, knownTypes, userId, analysisDate) => {
           if (numericValue !== null) {
             console.log(`  --> Extracted numeric value: ${numericValue}`);
 
+            const isPercentLikeAnalysis =
+              analysisType.name.includes('%') ||
+              analysisType.name.includes('Fractia reticulocitelor imature');
+
+            // Guardrail + recovery for OCR noise: percent-like analyses should not exceed 100.
+            // If they do, try decimal-shift recovery (e.g. 155 -> 15.5 or 1.55).
+            if (isPercentLikeAnalysis && numericValue > 100) {
+              const candidates = [numericValue / 10, numericValue / 100].filter(
+                (v) => v > 0 && v <= 100
+              );
+
+              const scoreByReference = (value) => {
+                const min = analysisType.refMin;
+                const max = analysisType.refMax;
+
+                if (min == null || max == null) {
+                  return -Math.abs(value - 50); // weak fallback if no reference exists
+                }
+
+                if (value >= min && value <= max) {
+                  return 100;
+                }
+
+                const distToMin = Math.abs(value - min);
+                const distToMax = Math.abs(value - max);
+                return -Math.min(distToMin, distToMax);
+              };
+
+              if (candidates.length > 0) {
+                candidates.sort((a, b) => scoreByReference(b) - scoreByReference(a));
+                const corrected = candidates[0];
+                console.log(
+                  `  --> Corrected percent-like OCR value ${numericValue} -> ${corrected}`
+                );
+                numericValue = corrected;
+              } else {
+                console.log(
+                  `  --> Skipping impossible percent-like value (>100): ${numericValue}`
+                );
+                continue;
+              }
+            }
+
+            const existingResultSameType = results.find(
+              (r) => r.analysisTypeId === analysisType.id && r.value !== null
+            );
+
+            // For % analyses OCR often captures both percentage and absolute count under same label.
+            // Keep only one value and prefer the larger one (usually the real percentage).
+            if (
+              isPercentLikeAnalysis &&
+              existingResultSameType &&
+              existingResultSameType.value !== numericValue
+            ) {
+              if (numericValue > existingResultSameType.value) {
+                console.log(
+                  `  --> Replacing previous % value ${existingResultSameType.value} with ${numericValue}`
+                );
+                existingResultSameType.value = numericValue;
+              } else {
+                console.log(
+                  `  --> Skipping secondary % candidate (likely absolute value): ${numericValue}`
+                );
+              }
+              foundAnalyses.add(uniqueKey);
+              continue;
+            }
+
             // Check if we already have this analysis with the same value (avoid duplicates within same section)
             const isDuplicate = results.some(
               (r) =>

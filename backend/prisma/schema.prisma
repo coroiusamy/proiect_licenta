@@ -37,7 +37,7 @@ model User {
   resetPasswordExpires DateTime?
   
   analysisResults AnalysisResult[]
-
+  treatments      Treatment[]
   // Relații Doctor-Pacient
   generatedCodes  AccessCode[]      @relation("PatientCodes")
   doctorLinks     DoctorPatient[]   @relation("DoctorLinks")   // Medicul are pacienți
@@ -82,8 +82,9 @@ model AnalysisType {
   interpretationNormal String? @db.Text
   interpretationHigh  String? @db.Text
 
-  // Un tip de analiză are multe rezultate
-  results AnalysisResult[]
+  // Un tip de analiză are multe rezultate și tratamente
+  results    AnalysisResult[]
+  treatments Treatment[]
 }
 
 // === REZULTATELE UTILIZATORILOR (JURNALUL) ===
@@ -122,4 +123,20 @@ model ExternalPrice {
 
   // Cheie unică: O clinică are un singur preț pentru un tip de analiză
   @@unique([clinicName, analysisName])
+}
+
+// === TRATAMENTE PENTRU PACIENȚI ===
+model Treatment {
+  id             Int       @id @default(autoincrement())
+  name           String    // Nume medicament (ex: "Euthyrox 50mcg")
+  startDate      DateTime  // Data începerii
+  endDate        DateTime? // Data încheierii (opțională)
+
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  analysisTypeId Int
+  analysisType   AnalysisType @relation(fields: [analysisTypeId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime  @default(now())
 }

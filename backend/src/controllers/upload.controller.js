@@ -8,11 +8,69 @@ import { generateWellnessAdvice } from '../services/ai.service.js';
 
 const prisma = new PrismaClient();
 const OCR_DEBUG = process.env.UPLOAD_DEBUG === '1';
+const OCR_PROVIDER = process.env.OCR_PROVIDER || 'auto';
+const GOOGLE_VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY;
 
 const ocrDebugLog = (...args) => {
   if (OCR_DEBUG) {
     console.log('[UploadOCRDebug]', ...args);
   }
+};
+
+const resolveOcrProvider = () => {
+  if (OCR_PROVIDER === 'google-vision') return 'google-vision';
+  if (OCR_PROVIDER === 'tesseract') return 'tesseract';
+  if (OCR_PROVIDER === 'auto') {
+    return GOOGLE_VISION_API_KEY ? 'google-vision' : 'tesseract';
+  }
+  return 'tesseract';
+};
+
+const extractTextWithGoogleVision = async (imageBuffer) => {
+  if (!GOOGLE_VISION_API_KEY) {
+    throw new Error('Lipsește GOOGLE_VISION_API_KEY pentru OCR Google Vision.');
+  }
+
+  const response = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            image: {
+              content: imageBuffer.toString('base64'),
+            },
+            features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+            imageContext: {
+              languageHints: ['ro', 'en'],
+            },
+          },
+        ],
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Google Vision HTTP ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  const first = data?.responses?.[0];
+
+  if (first?.error) {
+    throw new Error(`Google Vision error: ${first.error.message}`);
+  }
+
+  const text = first?.fullTextAnnotation?.text || first?.textAnnotations?.[0]?.description || '';
+  return {
+    text,
+    confidence: null,
+  };
 };
 
 function scoreOcrText(text) {
@@ -229,6 +287,13 @@ function hasMinimumMedicalAnchors(textContent) {
     'numar leucocite',
     'hematocrit',
     'synevo',
+    'regina maria',
+    'laborator',
+    'rezultat',
+    'metoda',
+    'certificat',
+    'rezultate',
+    'analize',
   ];
 
   let hits = 0;
@@ -262,6 +327,7 @@ export const uploadAnalysisFile = async (req, res) => {
   let textContent = '';
   let useOcrHeuristics = false;
   let worker = null;
+  const activeProvider = resolveOcrProvider();
 
   try {
     const hasPdf = uploadedFiles.some((file) => file.mimetype === 'application/pdf');
@@ -287,13 +353,17 @@ export const uploadAnalysisFile = async (req, res) => {
     } else if (uploadedFiles.every((file) => file.mimetype.startsWith('image/'))) {
       console.log('[UploadAPI] process images via OCR', {
         count: uploadedFiles.length,
+        provider: activeProvider,
       });
-      worker = await createWorker('ron+eng', 1);
-      await worker.setParameters({
-        tessedit_pageseg_mode: '6',
-        preserve_interword_spaces: '1',
-        user_defined_dpi: '300',
-      });
+
+      if (activeProvider === 'tesseract') {
+        worker = await createWorker('ron+eng', 1);
+        await worker.setParameters({
+          tessedit_pageseg_mode: '6',
+          preserve_interword_spaces: '1',
+          user_defined_dpi: '300',
+        });
+      }
 
       const extractedTexts = [];
       let successImages = 0;
@@ -307,10 +377,15 @@ export const uploadAnalysisFile = async (req, res) => {
         });
 
         try {
-          const ocrResult = await extractBestTextFromImage(
-            worker,
-            imageFile.buffer,
-          );
+          const ocrResult =
+            activeProvider === 'google-vision'
+              ? {
+                  ...(await extractTextWithGoogleVision(imageFile.buffer)),
+                  usedVariant: 'google_vision_document_text',
+                  enhancedScore: null,
+                  originalScore: null,
+                }
+              : await extractBestTextFromImage(worker, imageFile.buffer);
 
           extractedTexts.push(ocrResult.text || '');
           console.log('[UploadAPI] OCR variant selected', {
@@ -319,6 +394,7 @@ export const uploadAnalysisFile = async (req, res) => {
             enhancedScore: ocrResult.enhancedScore,
             originalScore: ocrResult.originalScore,
             confidence: ocrResult.confidence,
+            provider: activeProvider,
           });
 
           ocrDebugLog('raw_text_start', {

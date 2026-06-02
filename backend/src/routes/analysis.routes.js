@@ -7,6 +7,7 @@ import {
   addAnalysisResult,
   getChartData,
   deleteAnalysesByDate,
+  getHealthSummary
 } from '../controllers/analysis.controller.js';
 import { uploadAnalysisFile } from '../controllers/upload.controller.js';
 import multer from 'multer';
@@ -18,7 +19,7 @@ const upload = multer({
   storage: storage,
   limits: {
     files: 10,
-    fileSize: 15 * 1024 * 1024,
+    fileSize: 20 * 1024 * 1024,
   },
 });
 
@@ -32,6 +33,10 @@ router.get('/types', getAllAnalysisTypes);
 // GET /api/analyses/
 //istoric analize personale
 router.get('/', protect, getMyResults);
+
+// GET /api/analyses/health-summary
+// Scor de sanatate si raport AI global
+router.get('/health-summary', protect, patientOnly, getHealthSummary);
 
 // POST /api/analyses/
 // Adauga o analiza noua
