@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,11 +14,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 import { useAuth } from '@/context/AuthContext';
+
+// Suprimăm eroarea depreciată specifică pentru a nu bloca rularea
+import { LogBox } from 'react-native';
+LogBox.ignoreLogs(['Method downloadAsync imported from "expo-file-system" is deprecated']);
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const { width } = Dimensions.get('window');
@@ -154,12 +160,14 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [recentAnalyses, setRecentAnalyses] = useState<any[]>([]);
+  const [healthSummary, setHealthSummary] = useState<any>(null);
   const [stats, setStats] = useState({
     totalAnalyses: 0,
     thisMonth: 0,
     lastUpdate: null as Date | null,
   });
-  const fetchDashboardData = async () => {
+  
+  const fetchDashboardData = useCallback(async () => {
     try {
       const profileRes = await axios.get(`${API_URL}/api/user/profile`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -177,6 +185,15 @@ export default function HomeScreen() {
           new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
       setRecentAnalyses(sorted.slice(0, 5));
+
+      try {
+        const summaryRes = await axios.get(`${API_URL}/api/analyses/health-summary`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setHealthSummary(summaryRes.data);
+      } catch (err) {
+        console.error("Nu am putut incarca scorul de sanatate");
+      }
 
       const now = new Date();
       const thisMonth = analyses.filter((a: any) => {
@@ -198,11 +215,13 @@ export default function HomeScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [token]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [fetchDashboardData])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -228,6 +247,36 @@ export default function HomeScreen() {
     if (bmi < 25) return 'Normal';
     if (bmi < 30) return 'Supraponderal';
     return 'Obezitate';
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      setIsLoading(true);
+      const downloadRes = await FileSystem.downloadAsync(
+        `${API_URL}/api/report/generate`,
+        FileSystem.documentDirectory + `FisaMedicala.pdf`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      const { uri, status } = downloadRes;
+
+      if (status === 200) {
+        if (await Sharing.isAvailableAsync()) {
+           await Sharing.shareAsync(uri);
+        } else {
+           Toast.show({ type: 'success', text1: 'Raport descărcat!', text2: uri, position: 'bottom' });
+        }
+      } else {
+        throw new Error(`Eroare status ${status}`);
+      }
+    } catch(e: any) {
+      console.error('Download err:', e);
+      Toast.show({ type: 'error', text1: 'Eroare', text2: e.message || 'Eroare necunoscută', position: 'bottom' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
@@ -305,8 +354,9 @@ export default function HomeScreen() {
               { color: isDark ? '#FFFFFF' : '#000000' },
             ]}
           >
-            Sumar Sănătate
+            Statistici
           </Text>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -385,8 +435,47 @@ export default function HomeScreen() {
               color="#FF2D55"
               isDark={isDark}
             />
+            <QuickActionButton
+              icon="picture-as-pdf"
+              label="PDF"
+              onPress={handleDownloadPDF}
+              color="#000000"
+              isDark={isDark}
+            />
           </View>
         </View>
+
+        {/* Sumar Sănătate (Mutat între acțiuni rapide și analize recente) */}
+        {healthSummary && (
+          <View style={styles.section}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: isDark ? '#FFFFFF' : '#000000' },
+              ]}
+            >
+              Sumar Sănătate Global
+            </Text>
+            <View style={[styles.healthSummaryBox, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+              <View style={styles.healthScoreRow}>
+                <View style={styles.healthScoreCircle}>
+                  <Text style={[styles.healthScoreText, { color: healthSummary.score >= 80 ? '#34C759' : healthSummary.score >= 50 ? '#FF9500' : '#FF3B30' }]}>
+                    {healthSummary.score}
+                  </Text>
+                  <Text style={styles.healthScoreSub}>/100</Text>
+                </View>
+                <View style={{flex: 1, marginLeft: 15}}>
+                  <Text style={[styles.healthScoreLabel, { color: isDark ? '#FFFFFF' : '#000000' }]}>Scorul Tău Global</Text>
+                  <Text style={styles.healthScoreDesc}>Bazat pe ultimele tale {healthSummary.metrics?.total || 0} analize unice.</Text>
+                </View>
+              </View>
+              <View style={[styles.healthSummarySeparator, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+              <Text style={[styles.healthSummaryText, { color: isDark ? '#EBEBF5' : '#3A3A3C' }]}>
+                {healthSummary.summary}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {recentAnalyses.length > 0 && (
           <View style={styles.section}>
@@ -418,6 +507,7 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -594,4 +684,53 @@ const styles = StyleSheet.create({
   },
   tipTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
   tipText: { fontSize: 14, lineHeight: 20, opacity: 0.8 },
+  healthSummaryBox: {
+    borderRadius: 20,
+    padding: 20,
+    marginHorizontal: 0,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  healthScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  healthScoreCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#007AFF15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  healthScoreText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  healthScoreSub: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  healthScoreLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  healthScoreDesc: {
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+  healthSummarySeparator: {
+    height: 1,
+    width: '100%',
+    marginVertical: 15,
+  },
+  healthSummaryText: {
+    fontSize: 14,
+    lineHeight: 20,
+  }
 });

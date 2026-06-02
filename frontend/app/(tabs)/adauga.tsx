@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   useColorScheme,
   ActivityIndicator,
-  Image,
+  Modal,
+  Pressable,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +22,10 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
-const CAMERA_SAFE_MODE_ANDROID = false;
+const CAMERA_SAFE_MODE_ANDROID = Platform.OS === 'android' && __DEV__;
+const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
+const RAW_IMAGE_ACCEPT_MAX_BYTES = 60 * 1024 * 1024;
+const COMPRESS_TRIGGER_BYTES = 18 * 1024 * 1024;
 
 const logUpload = (...args: any[]) => {
   console.log('[UploadFlow]', ...args);
@@ -35,9 +39,120 @@ export default function AdaugaScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
+  const [isSourceSheetVisible, setIsSourceSheetVisible] = useState(false);
+  const [isPickerBusy, setIsPickerBusy] = useState(false);
+  const pickerBusyRef = useRef(false);
+  const acquirePickerLock = () => {
+    if (pickerBusyRef.current) return false;
+    pickerBusyRef.current = true;
+    setIsPickerBusy(true);
+    return true;
+  };
+
+  const releasePickerLock = () => {
+    pickerBusyRef.current = false;
+    setIsPickerBusy(false);
+  };
+
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
+
+  const getAssetSize = (asset: any) => asset?.size || asset?.fileSize || 0;
+
+  useEffect(() => {
+    const recoverPendingPickerResult = async () => {
+      if (Platform.OS !== 'android') return;
+
+      try {
+        const pendingResult = await ImagePicker.getPendingResultAsync();
+        if (!pendingResult || pendingResult.canceled || !pendingResult.assets?.length) {
+          return;
+        }
+
+        logUpload('pickImage:pending_result_recovered', {
+          assetsCount: pendingResult.assets.length,
+        });
+
+        const validAssets = pendingResult.assets.filter(
+          (asset) => (asset.fileSize || 0) <= RAW_IMAGE_ACCEPT_MAX_BYTES,
+        );
+
+        if (validAssets.length === 0) return;
+
+        setSelectedFiles((prev) => {
+          const merged = [...prev, ...validAssets];
+          const uniqueByUri = merged.filter(
+            (item, idx, arr) => arr.findIndex((x) => x.uri === item.uri) === idx,
+          );
+          return uniqueByUri.slice(0, 10);
+        });
+        setFileType('image');
+      } catch (error) {
+        logUpload('pickImage:pending_result_error', error);
+      }
+    };
+
+    void recoverPendingPickerResult();
+  }, []);
+
+  const compressImageForUpload = async (asset: any, index: number) => {
+    const sourceSize = getAssetSize(asset);
+
+    if (sourceSize <= COMPRESS_TRIGGER_BYTES) {
+      return asset;
+    }
+
+    logUpload('uploadFile:compress_start', {
+      index,
+      sizeMB: (sourceSize / 1024 / 1024).toFixed(2),
+      width: asset?.width,
+      height: asset?.height,
+    });
+
+    const manipulatorModule = await import('expo-image-manipulator').catch(
+      () => null,
+    );
+
+    if (!manipulatorModule) {
+      logUpload('uploadFile:compress_skip_no_module', { index });
+      return asset;
+    }
+
+    const maxDim = Math.max(asset?.width || 0, asset?.height || 0);
+    const actions: any[] = [];
+
+    if (maxDim > 3600) {
+      const targetWidth = (asset?.width || 0) >= (asset?.height || 0) ? 3600 : undefined;
+      const targetHeight = (asset?.height || 0) > (asset?.width || 0) ? 3600 : undefined;
+      actions.push({ resize: { width: targetWidth, height: targetHeight } });
+    }
+
+    const manipulated = await manipulatorModule.manipulateAsync(asset.uri, actions, {
+      compress: sourceSize > MAX_IMAGE_SIZE_BYTES ? 0.78 : 0.88,
+      format: manipulatorModule.SaveFormat.JPEG,
+    });
+
+    const compressedAsset = {
+      ...asset,
+      uri: manipulated.uri,
+      width: manipulated.width,
+      height: manipulated.height,
+      mimeType: 'image/jpeg',
+      name: asset?.name || `analysis_${Date.now()}_${index}.jpg`,
+      // Size may not be available for manipulated assets on every platform.
+      size: asset?.size,
+      fileSize: asset?.fileSize,
+    };
+
+    logUpload('uploadFile:compress_done', {
+      index,
+      width: manipulated.width,
+      height: manipulated.height,
+    });
+
+    return compressedAsset;
+  };
 
   const pickPDF = async () => {
     try {
@@ -73,6 +188,7 @@ export default function AdaugaScreen() {
   };
 
   const pickImage = async () => {
+    if (!acquirePickerLock()) return;
     try {
       if (Platform.OS === 'android' && CAMERA_SAFE_MODE_ANDROID) {
         logUpload('pickImage:safe_mode_android_redirect_to_gallery');
@@ -100,9 +216,7 @@ export default function AdaugaScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        quality: 0.5,
         allowsEditing: false,
-        exif: false,
       });
       logUpload('pickImage:camera_result', {
         canceled: result?.canceled,
@@ -118,12 +232,12 @@ export default function AdaugaScreen() {
           mimeType: image?.mimeType,
         });
 
-        // Protecție pentru fișiere foarte mari care pot duce la închidere pe Android
-        if ((image.fileSize || 0) > 12 * 1024 * 1024) {
+        // Permitem selectarea rapidă; compresia se face în background la upload.
+        if ((image.fileSize || 0) > RAW_IMAGE_ACCEPT_MAX_BYTES) {
           Toast.show({
             type: 'info',
             text1: 'Imagine prea mare',
-            text2: 'Alege din galerie sau refă poza la rezoluție mai mică.',
+            text2: 'Limita brută este 60MB per imagine.',
           });
           return;
         }
@@ -137,13 +251,19 @@ export default function AdaugaScreen() {
         });
       }
     } catch (error) {
-      logUpload('pickImage:error_fallback_gallery', error);
-      // Pe unele build-uri Android, camera poate eșua intermitent; fallback la galerie
-      await pickImagesFromGallery();
+      logUpload('pickImage:error', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Camera a eșuat',
+        text2: 'Încearcă din nou sau alege din galerie.',
+      });
+    } finally {
+      releasePickerLock();
     }
   };
 
   const pickImagesFromGallery = async () => {
+    if (!acquirePickerLock()) return;
     try {
       logUpload('pickImagesFromGallery:start');
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -170,8 +290,13 @@ export default function AdaugaScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        const validAssets = result.assets.filter(
+          (asset) => (asset.fileSize || 0) <= RAW_IMAGE_ACCEPT_MAX_BYTES,
+        );
+        const skippedCount = result.assets.length - validAssets.length;
+
         setSelectedFiles((prev) => {
-          const merged = [...prev, ...result.assets];
+          const merged = [...prev, ...validAssets];
           const uniqueByUri = merged.filter(
             (item, idx, arr) => arr.findIndex((x) => x.uri === item.uri) === idx,
           );
@@ -182,7 +307,10 @@ export default function AdaugaScreen() {
         Toast.show({
           type: 'success',
           text1: 'Imagini selectate',
-          text2: `${result.assets.length} pagini adăugate`,
+          text2:
+            skippedCount > 0
+              ? `${validAssets.length} adăugate, ${skippedCount} peste 60MB`
+              : `${validAssets.length} pagini adăugate`,
         });
       }
     } catch (error) {
@@ -192,7 +320,29 @@ export default function AdaugaScreen() {
         text1: 'Eroare',
         text2: 'Nu s-au putut selecta imaginile.',
       });
+    } finally {
+      releasePickerLock();
     }
+  };
+
+  const pickImages = () => {
+    setIsSourceSheetVisible(true);
+  };
+
+  const openCameraFromSheet = () => {
+    if (pickerBusyRef.current) return;
+    setIsSourceSheetVisible(false);
+    setTimeout(() => {
+      void pickImage();
+    }, 400); // Mărit delay-ul pentru a lăsa modal-ul să se închidă complet
+  };
+
+  const openGalleryFromSheet = () => {
+    if (pickerBusyRef.current) return;
+    setIsSourceSheetVisible(false);
+    setTimeout(() => {
+      void pickImagesFromGallery();
+    }, 400); // Mărit delay-ul
   };
 
   const uploadFile = async () => {
@@ -216,21 +366,26 @@ export default function AdaugaScreen() {
       const formData = new FormData();
 
       for (let i = 0; i < selectedFiles.length; i++) {
-        const currentFile = selectedFiles[i];
+        let currentFile = selectedFiles[i];
         const isPdfFile = fileType === 'pdf';
+
+        if (!isPdfFile) {
+          currentFile = await compressImageForUpload(currentFile, i);
+        }
+
         logUpload('uploadFile:prepare_file', {
           index: i,
           uri: currentFile?.uri,
           name: currentFile?.name,
           mimeType: currentFile?.mimeType,
-          size: currentFile?.size || currentFile?.fileSize || 0,
+          size: getAssetSize(currentFile),
         });
 
-        if (!isPdfFile && (currentFile.size || currentFile.fileSize || 0) > 12 * 1024 * 1024) {
+        if (!isPdfFile && getAssetSize(currentFile) > RAW_IMAGE_ACCEPT_MAX_BYTES) {
           Toast.show({
             type: 'error',
             text1: 'Fișier prea mare',
-            text2: 'Una dintre imagini depășește 12MB. Redu dimensiunea și încearcă din nou.',
+            text2: 'Una dintre imagini depășește limita brută de 60MB.',
           });
           setIsUploading(false);
           return;
@@ -400,21 +555,12 @@ export default function AdaugaScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.selectButton, { backgroundColor: '#34C759' }]}
-                onPress={pickImage}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="camera-alt" size={24} color="#FFFFFF" />
-                <Text style={styles.selectButtonText}>Scanează Imagine</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
                 style={[styles.selectButton, { backgroundColor: '#5856D6' }]}
-                onPress={pickImagesFromGallery}
+                onPress={pickImages}
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="photo-library" size={24} color="#FFFFFF" />
-                <Text style={styles.selectButtonText}>Alege imagini (multi)</Text>
+                <Text style={styles.selectButtonText}>Adaugă Poze</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -422,11 +568,11 @@ export default function AdaugaScreen() {
               {fileType === 'image' && selectedFiles.length < 10 && (
                 <TouchableOpacity
                   style={[styles.selectButton, { backgroundColor: '#5856D6' }]}
-                  onPress={pickImagesFromGallery}
+                  onPress={pickImages}
                   activeOpacity={0.8}
                 >
                   <MaterialIcons name="add-photo-alternate" size={24} color="#FFFFFF" />
-                  <Text style={styles.selectButtonText}>Adaugă pagini</Text>
+                  <Text style={styles.selectButtonText}>Adaugă poze</Text>
                 </TouchableOpacity>
               )}
 
@@ -597,6 +743,58 @@ export default function AdaugaScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={isSourceSheetVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsSourceSheetVisible(false)}
+      >
+        <Pressable
+          style={styles.sheetBackdrop}
+          onPress={() => setIsSourceSheetVisible(false)}
+        >
+          <Pressable
+            style={[
+              styles.sourceSheet,
+              { backgroundColor: isDark ? '#111214' : '#FFFFFF' },
+            ]}
+            onPress={() => {}}
+          >
+            <View style={styles.sheetHandle} />
+            <Text style={[styles.sheetTitle, { color: textColor }]}>Adaugă Poze</Text>
+            <Text style={[styles.sheetSubtitle, { color: textColor }]}>Alege camera sau galerie</Text>
+
+            <TouchableOpacity
+              style={[styles.sheetAction, { backgroundColor: '#007AFF' }]}
+              onPress={openCameraFromSheet}
+              activeOpacity={0.85}
+              disabled={isPickerBusy}
+            >
+              <MaterialIcons name="photo-camera" size={22} color="#FFFFFF" />
+              <Text style={styles.sheetActionText}>Deschide Camera</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sheetAction, { backgroundColor: '#5856D6' }]}
+              onPress={openGalleryFromSheet}
+              activeOpacity={0.85}
+              disabled={isPickerBusy}
+            >
+              <MaterialIcons name="photo-library" size={22} color="#FFFFFF" />
+              <Text style={styles.sheetActionText}>Alege din Galerie</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sheetCancelButton}
+              onPress={() => setIsSourceSheetVisible(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sheetCancelText}>Anulează</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -837,5 +1035,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    justifyContent: 'flex-end',
+  },
+  sourceSheet: {
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+    gap: 10,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#C7C7CC',
+    marginBottom: 8,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  sheetSubtitle: {
+    fontSize: 14,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  sheetAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  sheetActionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sheetCancelButton: {
+    marginTop: 4,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  sheetCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
   },
 });

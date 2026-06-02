@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '@/context/AuthContext';
@@ -211,9 +211,12 @@ export default function IstoricScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchAnalyses();
-  }, [fetchAnalyses]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnalyses();
+    }, [fetchAnalyses])
+  );
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchAnalyses();
