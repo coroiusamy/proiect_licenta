@@ -571,18 +571,6 @@ const analysisTypesData = [
     interpretationNormal: 'Fără proteine în urină (normal).',
   },
 
-  // ❌ ȘTERS "glucoza" urinară - Se confunda cu glicemia din sânge!
-  // Dacă vrei să păstrezi glucoza urinară, redenumește-o clar:
-  // {
-  //   name: 'Glucoză urinară (glicozurie)',
-  //   displayName: 'Glucoză urinară',
-  //   unit: 'mg/dL',
-  //   refMin: 0,
-  //   refMax: 15,
-  //   interpretationNormal: 'Nedetectabil (normal). Fără glucoză în urină.',
-  //   interpretationHigh: 'Glicozurie. Indică diabet zaharat necontrolat.',
-  // },
-
   {
     name: 'corpi cetonici',
     displayName: 'Corpi cetonici urinari',
@@ -1047,7 +1035,7 @@ const analysisTypesData = [
 
 async function main() {
   console.log(
-    '🔄 Începem popularea bazei de date cu analize ÎMBUNĂTĂȚITE...\n'
+    '🔄 Începem popularea bazei de date cu analize ÎMBUNĂTĂȚITE...\n',
   );
 
   for (const analysis of analysisTypesData) {

@@ -1,6 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { generateWellnessAdvice } from '../services/ai.service.js';
+import puppeteer from 'puppeteer';
+import ejs from 'ejs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const prisma = new PrismaClient();
 
 // Toate tipurile de analize din sistem (PUBLIC)
@@ -13,7 +19,6 @@ export const getAllAnalysisTypes = async (req, res) => {
     });
     res.status(200).json(types);
   } catch (error) {
-    console.error('Eroare la preluarea tipurilor de analize:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -37,7 +42,6 @@ export const getMyResults = async (req, res) => {
 
     res.status(200).json(results);
   } catch (error) {
-    console.error('Eroare la preluarea rezultatelor:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -129,16 +133,11 @@ export const addAnalysisResult = async (req, res) => {
             });
           }
         } catch (bgError) {
-          console.error(
-            `Eroare generare AI pentru ID: ${newResult.id}`,
-            bgError,
-          );
+          // Eroarea AI nu afectează rezultatul salvat
         }
       }, 100);
     }
   } catch (error) {
-    console.error('Eroare la adăugarea analizei:', error);
-    // Verificăm dacă nu am trimis deja răspunsul
     if (!res.headersSent) {
       res.status(500).json({ message: 'Eroare server' });
     }
@@ -182,7 +181,6 @@ export const deleteAnalysesByDate = async (req, res) => {
       deletedCount: deleted.count,
     });
   } catch (error) {
-    console.error('Eroare la ștergerea analizelor:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -216,9 +214,19 @@ export const getChartData = async (req, res) => {
       },
     });
 
-    res.status(200).json(results);
+    // Preluăm tratamentele
+    const treatments = await prisma.treatment.findMany({
+      where: {
+        userId: userId,
+        analysisTypeId: analysisTypeId,
+      },
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+
+    res.status(200).json({ results, treatments });
   } catch (error) {
-    console.error('Eroare la preluarea datelor pentru grafic:', error);
     res.status(500).json({ message: 'Eroare server' });
   }
 };
@@ -246,7 +254,147 @@ export const getAnalysisById = async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
-    console.error('Eroare la preluarea analizei:', error);
     res.status(500).json({ message: 'Eroare server' });
+  }
+};
+
+export const getHealthSummary = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Prinde ultimele analize (cele mai recente pt fiecare tip)
+    const results = await prisma.analysisResult.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+      include: { analysisType: true },
+    });
+
+    if (!results || results.length === 0) {
+      return res.status(200).json({
+        score: 0,
+        summary:
+          'Nu există suficiente date pentru a calcula un scor de sănătate. Adaugă primele tale analize în sistem.',
+        metrics: { normal: 0, warning: 0, total: 0 },
+      });
+    }
+
+    // Filtrează doar cel mai recent rezultat pentru fiecare tip
+    const latestResultsMap = new Map();
+    results.forEach((r) => {
+      if (!latestResultsMap.has(r.analysisTypeId)) {
+        latestResultsMap.set(r.analysisTypeId, r);
+      }
+    });
+
+    const latestResults = Array.from(latestResultsMap.values());
+    const total = latestResults.length;
+
+    let normalCount = 0;
+    let warningCount = 0;
+    let abnormalDetails = [];
+
+    latestResults.forEach((r) => {
+      if (r.status === 'normal' || !r.status) {
+        normalCount++;
+      } else {
+        warningCount++;
+        abnormalDetails.push(
+          `${r.analysisType.name}: ${r.value} ${r.analysisType.unit || ''} (${r.status})`,
+        );
+      }
+    });
+
+    // Score from 0 to 100
+    const score = Math.round((normalCount / total) * 100);
+
+    // În practică aici se poate chema Ollama dacă există "abnormalDetails".
+    // Dar vom returna un AI Advice pre-formulat sau un call rapid la AI Service dacă e nevoie.
+    let summary = `Scorul tău este ${score} din 100. Din ultimele ${total} analize unice, ${normalCount} sunt în parametri optimi.`;
+
+    if (warningCount > 0) {
+      summary += ` Totuși, au fost identificate ${warningCount} valori în afara limitelor normale: ${abnormalDetails.join(', ')}. Îți recomandăm să consulți un medic pentru acestea și să monitorizezi progresul!`;
+    } else {
+      summary += ` Excelent! Toți parametrii evaluați sunt în limite normale. Păstrează acest un stil de viață sănătos!`;
+    }
+
+    res.status(200).json({
+      score,
+      summary,
+      metrics: { normal: normalCount, warning: warningCount, total },
+    });
+  } catch (error) {
+    console.error('getHealthSummary error: ', error);
+    res.status(500).json({ message: 'Eroare la calcularea scorului' });
+  }
+};
+
+export const generateMedicalReport = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilizator inexistent' });
+    }
+
+    const results = await prisma.analysisResult.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+      include: { analysisType: true },
+    });
+
+    // Calculăm statistici pe fugă pentru raport
+    let normalCount = 0;
+    let warningCount = 0;
+    const latestResultsMap = new Map();
+    results.forEach((r) => {
+      if (!latestResultsMap.has(r.analysisTypeId)) {
+        latestResultsMap.set(r.analysisTypeId, r);
+      }
+      if (r.status === 'normal' || !r.status) normalCount++;
+      else warningCount++;
+    });
+    const latestResults = Array.from(latestResultsMap.values());
+    const score =
+      latestResults.length > 0
+        ? Math.round(
+            (latestResults.filter((r) => r.status === 'normal' || !r.status)
+              .length /
+              latestResults.length) *
+              100,
+          )
+        : 0;
+
+    // Generam HTML-ul prin EJS
+    const templatePath = path.join(__dirname, '../templates/report.ejs');
+    const htmlTemplate = await ejs.renderFile(templatePath, {
+      user,
+      results,
+      score,
+      metrics: { warning: warningCount },
+    });
+
+    // Generam PDF-ul cu Puppeteer
+    const browser = await puppeteer.launch({ headless: 'new' });
+    const page = await browser.newPage();
+    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
+    });
+    await browser.close();
+
+    // Setam header-urile pt download PDF
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=FisaMedicala_${user.firstName}_${user.lastName}.pdf`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res.status(200).send(pdfBuffer);
+  } catch (error) {
+    console.error('generateMedicalReport error:', error);
+    res.status(500).json({ message: 'Eroare la generarea raportului pdf' });
   }
 };

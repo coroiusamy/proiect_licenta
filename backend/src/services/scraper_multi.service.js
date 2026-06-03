@@ -33,7 +33,6 @@ const filterResults = (rawResults, analysisName) => {
 
   if (filtered.length > 0) return filtered;
 
-  // Fallback relaxat
   const relaxed = rawResults.filter((item) => {
     const normalizedItemName = normalizeText(item.name);
     return queryTokens.every((token) => normalizedItemName.includes(token));
@@ -43,23 +42,17 @@ const filterResults = (rawResults, analysisName) => {
 };
 
 /**
- * Scrape prețuri pentru O SINGURĂ analiză (cu cache)
+ * Colectare prețuri pentru O SINGURĂ analiză (cu cache)
  */
 export const scrapePrices = async (analysisName) => {
-  console.log(`🔎 [Scraper] Căutare: "${analysisName}"`);
-
   // 1. Verifică cache
   const { cached, missing } = await checkCache([analysisName]);
 
   if (cached[analysisName] && cached[analysisName].length > 0) {
-    console.log(
-      `✅ [Scraper] Găsit în cache: ${cached[analysisName].length} prețuri`
-    );
     return cached[analysisName].sort((a, b) => a.price - b.price);
   }
 
-  // 2. Scraping live
-  console.log(`🌐 [Scraper] Cache miss. Scraping live...`);
+  // 2. Colectare prețuri în timp real
   let rawResults = [];
   let browser = null;
 
@@ -90,7 +83,7 @@ export const scrapePrices = async (analysisName) => {
       ...(medlifeData || []),
     ];
   } catch (error) {
-    console.error('❌ [Scraper] Eroare:', error);
+    // Eroare la colectarea prețurilor
   } finally {
     if (browser) await browser.close();
   }
@@ -107,24 +100,16 @@ export const scrapePrices = async (analysisName) => {
 };
 
 /**
- * Scrape prețuri pentru MULTIPLE analize (batch cu cache)
+ * Colectare prețuri pentru MULTIPLE analize (mod batch cu cache)
  */
 export const scrapePricesBatch = async (analysisNames) => {
-  console.log(
-    `📦 [Scraper Batch] Start pentru ${analysisNames.length} analize...`
-  );
-
   // 1. Verifică cache pentru toate
   const { cached, missing } = await checkCache(analysisNames);
 
-  // 2. Scrape doar ce lipsește
+  // 2. Colectăm doar ce lipsește
   const freshResults = {};
 
   if (missing.length > 0) {
-    console.log(
-      `🌐 [Scraper Batch] Scraping ${missing.length} analize lipsă...`
-    );
-
     let browser = null;
     try {
       browser = await puppeteer.launch({
@@ -132,7 +117,7 @@ export const scrapePricesBatch = async (analysisNames) => {
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
 
-      // Scrape TOATE analizele lipsă SIMULTAN
+      // Colectăm TOATE analizele lipsă SIMULTAN
       const scrapePromises = missing.map(async (analysisName) => {
         try {
           const [synevo, bioclinica, sante, regina, medlife] =
@@ -160,10 +145,6 @@ export const scrapePricesBatch = async (analysisNames) => {
 
           return { analysisName, results: filtered };
         } catch (err) {
-          console.error(
-            `❌ [Scraper Batch] Eroare pentru "${analysisName}":`,
-            err.message
-          );
           return { analysisName, results: [] };
         }
       });
@@ -174,20 +155,14 @@ export const scrapePricesBatch = async (analysisNames) => {
         freshResults[analysisName] = results;
       });
     } catch (error) {
-      console.error('❌ [Scraper Batch] Eroare fatală:', error);
+      // Eroare fatală la colectarea batch
     } finally {
       if (browser) await browser.close();
     }
   }
 
-  // 3. Combină cache + fresh
+  // 3. Combină datele din cache cu cele noi
   const allResults = { ...cached, ...freshResults };
-
-  console.log(
-    `✅ [Scraper Batch] Finalizat! Total analize: ${
-      Object.keys(allResults).length
-    }`
-  );
 
   return allResults;
 };
@@ -196,8 +171,6 @@ export const scrapePricesBatch = async (analysisNames) => {
  * Calculează pachete (prețuri totale per clinică)
  */
 export const calculatePackages = (batchResults) => {
-  console.log('📊 [Calculator] Calculăm pachete...');
-
   const clinics = ['Synevo', 'Regina Maria', 'MedLife', 'Bioclinica', 'Sante'];
   const packages = [];
 
@@ -236,8 +209,6 @@ export const calculatePackages = (batchResults) => {
 
   // Sortează după preț total
   packages.sort((a, b) => a.totalPrice - b.totalPrice);
-
-  console.log(`✅ [Calculator] Găsite ${packages.length} pachete complete`);
 
   return packages;
 };

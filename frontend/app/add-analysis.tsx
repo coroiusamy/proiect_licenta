@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -50,6 +51,7 @@ export default function AddAnalysisScreen() {
   }, []);
 
   const fetchAnalysisTypes = async () => {
+    const startTime = Date.now();
     try {
       const response = await axios.get(`${API_URL}/api/analyses/types`);
 
@@ -58,14 +60,18 @@ export default function AddAnalysisScreen() {
         setSelectedType(response.data[0].id.toString());
       }
     } catch (error: any) {
-      console.error('Error fetching analysis types:', error);
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Nu s-au putut încărca tipurile de analize.',
+        text1: 'Eroare de conectare',
+        text2: 'Nu am putut încărca tipurile de analize din baza de date.',
       });
     } finally {
-      setIsLoadingTypes(false);
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, 150 - elapsedTime);
+      
+      setTimeout(() => {
+        setIsLoadingTypes(false);
+      }, remainingTime);
     }
   };
 
@@ -78,8 +84,8 @@ export default function AddAnalysisScreen() {
     if (!typeInfo) {
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Selectează un tip de analiză.',
+        text1: 'Câmp necompletat ⚠️',
+        text2: 'Te rugăm să selectezi tipul de analiză din listă.',
       });
       return;
     }
@@ -89,8 +95,8 @@ export default function AddAnalysisScreen() {
     if (isNumeric && !value) {
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Introdu o valoare.',
+        text1: 'Valoare lipsă ⚠️',
+        text2: 'Te rugăm să introduci rezultatul numeric obținut.',
       });
       return;
     }
@@ -98,8 +104,8 @@ export default function AddAnalysisScreen() {
     if (!isNumeric && !stringValue) {
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Introdu o valoare.',
+        text1: 'Valoare lipsă ⚠️',
+        text2: 'Te rugăm să introduci rezultatul analizei.',
       });
       return;
     }
@@ -125,29 +131,27 @@ export default function AddAnalysisScreen() {
           setTimeout(() => {
             Toast.show({
               type: 'success',
-              text1: '✅ Analiză salvată!',
-              text2: '🤖 AI generează recomandări în fundal',
-              visibilityTime: 4000,
+              text1: 'Analiză înregistrată! 🎉',
+              text2: 'Asistentul AI lucrează la recomandări în fundal.',
+              visibilityTime: 4500,
             });
           }, 500);
         })
         .catch((error) => {
-          // Eroare - arată mesaj
           Toast.show({
             type: 'error',
-            text1: 'Eroare',
-            text2: error.response?.data?.message || 'Nu s-a putut salva.',
+            text1: 'Salvare eșuată ❌',
+            text2: error.response?.data?.message || 'Nu am putut salva analiza în baza de date.',
           });
         });
 
       // NAVIGHEAZĂ ÎNAPOI IMEDIAT
       router.back();
     } catch (error: any) {
-      console.error('Error submitting:', error);
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: error.response?.data?.message || 'Nu s-a putut salva.',
+        text1: 'Salvare eșuată ❌',
+        text2: error.response?.data?.message || 'A apărut o problemă la înregistrarea datelor.',
       });
       setIsSaving(false);
     }
@@ -158,12 +162,9 @@ export default function AddAnalysisScreen() {
 
   if (isLoadingTypes) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: containerBg }]}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: containerBg, justifyContent: 'center', alignItems: 'center' }} edges={['top']}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={[styles.loadingText, { color: textColor }]}>
-          Se încarcă tipurile de analize...
-        </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 

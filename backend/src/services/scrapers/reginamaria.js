@@ -4,19 +4,19 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
   try {
     const page = await browser.newPage();
 
-    // Stealth mode
+    // Mod stealth
     await page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false });
     });
 
     await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     );
     await page.setViewport({ width: 1366, height: 768 });
 
     // Navigare
     const searchUrl = `https://www.reginamaria.ro/rezultate-cautare/${encodeURIComponent(
-      analysisName
+      analysisName,
     )}`;
     await page.goto(searchUrl, {
       waitUntil: 'domcontentloaded',
@@ -35,7 +35,7 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
         for (const variant of variants) {
           const btn = buttons.find(
             (b) =>
-              b.textContent && b.textContent.toLowerCase().includes(variant)
+              b.textContent && b.textContent.toLowerCase().includes(variant),
           );
           if (btn) {
             btn.click();
@@ -57,7 +57,7 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (e) {
-      // Continue oricum
+      // Continuăm oricum
     }
 
     // Scroll pentru a încărca rezultate
@@ -72,7 +72,7 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
 
       detailLinks = await page.evaluate(() => {
         const rows = Array.from(
-          document.querySelectorAll('.view-id-search_analyses .views-row')
+          document.querySelectorAll('.view-id-search_analyses .views-row'),
         );
         return rows
           .map((row) => {
@@ -131,7 +131,7 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
             const buttons = Array.from(document.querySelectorAll('button'));
             const btn = buttons.find(
               (b) =>
-                b.textContent && b.textContent.toLowerCase().includes('accept')
+                b.textContent && b.textContent.toLowerCase().includes('accept'),
             );
             if (btn) btn.click();
           });
@@ -144,7 +144,7 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
 
         const price = await page.evaluate(() => {
           const priceEl = document.querySelector(
-            '.views-field-field-price .field-content'
+            '.views-field-field-price .field-content',
           );
           if (priceEl) {
             const match = priceEl.innerText.match(/(\d+[.,]?\d*)/);
@@ -166,13 +166,13 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
           });
         }
       } catch (innerErr) {
-        // Skip și continuă cu următoarea analiză
+        // Trecem la următoarea analiză
       }
     }
 
     await page.close();
   } catch (err) {
-    console.error('Eroare Regina Maria:', err.message);
+    // Eroare la colectarea prețurilor Regina Maria
   }
 
   return results;

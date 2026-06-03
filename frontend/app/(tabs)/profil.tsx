@@ -132,18 +132,18 @@ export default function ProfilScreen() {
     setIsEditing(false);
   };
 
-  // Helper function to get full image URL
+  // Funcție ajutătoare pentru URL-ul complet al imaginii
   const getProfileImageUrl = (profilePicture: string) => {
     if (!profilePicture) return null;
-    // If it's already a full URL (Google), return as-is
+    // Dacă este deja URL complet (Google), îl returnez direct
     if (profilePicture.startsWith('http')) return profilePicture;
-    // Otherwise, it's a local path, prepend the API URL
+    // Altfel, este cale locală, adaugăm URL-ul API
     return `${API_URL}${profilePicture}`;
   };
 
   const pickImage = async (useCamera: boolean) => {
     try {
-      // Request permissions
+      // Solicită permisiuni
       if (useCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -284,7 +284,7 @@ export default function ProfilScreen() {
         },
       );
     } else {
-      // Android Alert
+      // Alert Android
       const buttons: any[] = [
         { text: 'Anulează', style: 'cancel' },
         { text: 'Fă o poză', onPress: () => pickImage(true) },

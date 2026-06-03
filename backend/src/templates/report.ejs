@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fișă Medicală - <%= user.firstName %> <%= user.lastName %></title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #007AFF;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007AFF;
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+        .patient-info {
+            display: flex;
+            justify-content: space-between;
+            background-color: #F8F9FA;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .info-group {
+            flex: 1;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .info-value {
+            font-size: 16px;
+            margin-top: 4px;
+        }
+        h2 {
+            color: #2C2C2E;
+            border-bottom: 1px solid #E5E5EA;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #E5E5EA;
+        }
+        th {
+            background-color: #F2F2F7;
+            color: #3A3A3C;
+            font-weight: 600;
+        }
+        .status-normal { color: #34C759; font-weight: bold; }
+        .status-high { color: #FF3B30; font-weight: bold; }
+        .status-low { color: #FF9500; font-weight: bold; }
+        
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #8E8E93;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #E5E5EA;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Raport Medical: Istoric Analize</h1>
+        <p>Generat la: <%= new Date().toLocaleDateString('ro-RO') %></p>
+    </div>
+
+    <div class="patient-info">
+        <div class="info-group">
+            <div class="info-label">Pacient</div>
+            <div class="info-value"><%= user.firstName %> <%= user.lastName %></div>
+            <div class="info-label" style="margin-top: 10px;">Email</div>
+            <div class="info-value"><%= user.email %></div>
+        </div>
+        <div class="info-group">
+            <div class="info-label">Data Nașterii</div>
+            <div class="info-value"><%= user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString('ro-RO') : 'Nespecificat' %></div>
+            <div class="info-label" style="margin-top: 10px;">Gen</div>
+            <div class="info-value"><%= user.gender || 'Nespecificat' %></div>
+        </div>
+        <div class="info-group">
+            <div class="info-label">Greutate</div>
+            <div class="info-value"><%= user.weight ? user.weight + ' kg' : 'Nespecificat' %></div>
+            <div class="info-label" style="margin-top: 10px;">Înălțime</div>
+            <div class="info-value"><%= user.height ? user.height + ' cm' : 'Nespecificat' %></div>
+        </div>
+    </div>
+
+    <h2>Sumar Sănătate</h2>
+    <p><strong>Scor evaluat:</strong> <%= score %>/100</p>
+    <p>Din totalul analizelor efectuate pe plan global, pacientul prezintă <% if (metrics.warning > 0) { %> <%= metrics.warning %> valori în afara limitelor <% } else { %> toți parametrii în limite normale <% } %>.</p>
+
+    <h2>Istoric Rezultate</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Analiză</th>
+                <th>Rezultat</th>
+                <th>Interval Referință</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% results.forEach(function(r) { %>
+                <tr>
+                    <td><%= new Date(r.date).toLocaleDateString('ro-RO') %></td>
+                    <td><%= r.analysisType.name %></td>
+                    <td>
+                        <strong><%= r.value !== null ? r.value : r.stringValue %></strong>
+                        <span style="font-size: 12px; color: #666;"><%= r.analysisType.unit || '' %></span>
+                    </td>
+                    <td>
+                        <span style="font-size: 12px; color: #666;">
+                            <%= r.analysisType.refMin ? r.analysisType.refMin : '' %> 
+                            <%= (r.analysisType.refMin && r.analysisType.refMax) ? '-' : '' %> 
+                            <%= r.analysisType.refMax ? r.analysisType.refMax : '' %>
+                        </span>
+                    </td>
+                    <td>
+                        <% if (r.status === 'normal') { %>
+                            <span class="status-normal">Normal</span>
+                        <% } else if (r.status === 'high') { %>
+                            <span class="status-high">Ridicat</span>
+                        <% } else if (r.status === 'low') { %>
+                            <span class="status-low">Scăzut</span>
+                        <% } else { %>
+                            <span>-</span>
+                        <% } %>
+                    </td>
+                </tr>
+            <% }); %>
+            <% if (results.length === 0) { %>
+                <tr>
+                    <td colspan="5" style="text-align: center;">Nu există analize înregistrate.</td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>Acest raport a fost generat automat din aplicația "Jurnal Medical". Vă rugăm să prezentați aceste rezultate unui medic specialist pentru o interpretare aprofundată.</p>
+    </div>
+
+</body>
+</html>

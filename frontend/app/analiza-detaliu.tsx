@@ -32,6 +32,31 @@ export default function AnalysisDetailScreen() {
   const textColor = isDark ? '#FFFFFF' : '#000000';
   const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
 
+  // Calculăm procentul pentru acul indicator al graficului
+  const getGaugePosition = () => {
+    if (!analysis || analysis.value === null || analysis.analysisType.refMin === null || analysis.analysisType.refMax === null) {
+      return 50;
+    }
+    const val = analysis.value;
+    const min = analysis.analysisType.refMin;
+    const max = analysis.analysisType.refMax;
+
+    if (val < min) {
+      const ratio = min > 0 ? val / min : 0.5;
+      return Math.max(5, Math.min(28, 5 + ratio * 23));
+    } else if (val > max) {
+      const excessRatio = max > 0 ? (val - max) / max : 0.5;
+      return Math.min(95, Math.max(72, 72 + Math.min(excessRatio, 1) * 23));
+    } else {
+      const range = max - min;
+      const ratio = range > 0 ? (val - min) / range : 0.5;
+      return Math.max(32, Math.min(68, 32 + ratio * 36));
+    }
+  };
+
+  const positionPercent = getGaugePosition();
+  const hasGauge = analysis && analysis.value !== null && analysis.analysisType.refMin !== null && analysis.analysisType.refMax !== null;
+
   useEffect(() => {
     if (!analysisId) {
       router.back();
@@ -197,15 +222,15 @@ export default function AnalysisDetailScreen() {
             </Text>
           </View>
 
-          {analysis.status && analysis.status !== 'normal' && (
+          {analysis.status && (
             <View
               style={[
                 styles.statusBadge,
-                { backgroundColor: getStatusColor(analysis.status) + '20' },
+                { backgroundColor: getStatusColor(analysis.status) + '15' },
               ]}
             >
               <MaterialIcons
-                name="info-outline"
+                name={analysis.status === 'normal' ? 'check-circle-outline' : 'info-outline'}
                 size={16}
                 color={getStatusColor(analysis.status)}
               />
@@ -217,6 +242,43 @@ export default function AnalysisDetailScreen() {
               >
                 {getStatusText(analysis.status)}
               </Text>
+            </View>
+          )}
+
+          {hasGauge && (
+            <View style={styles.gaugeContainer}>
+              <View style={styles.gaugeLabels}>
+                <Text style={[styles.gaugeLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Scăzut</Text>
+                <Text style={[styles.gaugeLabel, { fontWeight: '700', color: '#34C759' }]}>Optim</Text>
+                <Text style={[styles.gaugeLabel, { color: isDark ? '#8E8E93' : '#666' }]}>Crescut</Text>
+              </View>
+              
+              <View style={[styles.gaugeTrack, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA70' }]}>
+                {/* Low zone */}
+                <View style={[styles.gaugeZone, { width: '30%', backgroundColor: '#FF950020', borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }]} />
+                {/* Normal zone */}
+                <View style={[styles.gaugeZone, { width: '40%', backgroundColor: '#34C75920' }]} />
+                {/* High zone */}
+                <View style={[styles.gaugeZone, { width: '30%', backgroundColor: '#FF3B3020', borderTopRightRadius: 6, borderBottomRightRadius: 6 }]} />
+                
+                {/* Dashed boundary markers */}
+                <View style={[styles.gaugeMarker, { left: '30%', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+                <View style={[styles.gaugeMarker, { left: '70%', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+
+                {/* Indicator cursor */}
+                <View style={[styles.gaugeIndicator, { left: `${positionPercent}%`, backgroundColor: getStatusColor(analysis.status) }]}>
+                  <View style={styles.gaugeIndicatorInner} />
+                </View>
+              </View>
+
+              <View style={styles.gaugeValues}>
+                <Text style={[styles.gaugeValueText, { color: isDark ? '#8E8E93' : '#8E8E93' }]}>
+                  {analysis.analysisType.refMin} {analysis.analysisType.unit}
+                </Text>
+                <Text style={[styles.gaugeValueText, { color: isDark ? '#8E8E93' : '#8E8E93' }]}>
+                  {analysis.analysisType.refMax} {analysis.analysisType.unit}
+                </Text>
+              </View>
             </View>
           )}
 
@@ -389,5 +451,72 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     marginLeft: 8,
+  },
+
+  // Graphical reference gauge styles
+  gaugeContainer: {
+    marginTop: 20,
+    marginBottom: 8,
+    width: '100%',
+  },
+  gaugeLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  gaugeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    opacity: 0.8,
+  },
+  gaugeTrack: {
+    height: 12,
+    borderRadius: 6,
+    flexDirection: 'row',
+    position: 'relative',
+    overflow: 'visible',
+    alignItems: 'center',
+  },
+  gaugeZone: {
+    height: '100%',
+  },
+  gaugeMarker: {
+    position: 'absolute',
+    height: '100%',
+    borderLeftWidth: 1,
+    borderStyle: 'dashed',
+    opacity: 0.6,
+  },
+  gaugeIndicator: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginLeft: -10, // Center the cursor on the percentage value
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  gaugeIndicatorInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  gaugeValues: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingHorizontal: '25%', // Align roughly with the 30% and 70% zones
+  },
+  gaugeValueText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

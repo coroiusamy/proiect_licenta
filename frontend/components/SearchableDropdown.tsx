@@ -158,7 +158,7 @@ export default function SearchableDropdown({
 }
 
 const styles = StyleSheet.create({
-  // Button
+  // Buton
   button: {
     height: 50,
     borderWidth: 1,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Search
+  // Căutare
   searchSection: {
     paddingHorizontal: 20,
     marginBottom: 15,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // List
+  // Listă
   list: {
     paddingHorizontal: 20,
   },
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
   },
 
-  // Empty State
+  // Stare goală
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',

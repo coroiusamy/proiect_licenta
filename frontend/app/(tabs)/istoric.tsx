@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '@/context/AuthContext';
@@ -37,6 +37,12 @@ const StatsCard = ({ icon, label, value, color, isDark }: any) => {
   );
 };
 
+const getStatusColor = (status: string) => {
+  if (status === 'low') return '#FF9500';
+  if (status === 'high') return '#FF3B30';
+  return '#34C759';
+};
+
 const BulletinCard = ({ bulletin, isDark, onPress, onDelete }: any) => {
   const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#000000';
@@ -52,7 +58,7 @@ const BulletinCard = ({ bulletin, isDark, onPress, onDelete }: any) => {
           style: 'destructive',
           onPress: () => onDelete(bulletin.isoDate),
         },
-      ]
+      ],
     );
   };
 
@@ -63,36 +69,39 @@ const BulletinCard = ({ bulletin, isDark, onPress, onDelete }: any) => {
       activeOpacity={0.7}
     >
       <View style={styles.bulletinHeader}>
-        <View style={[styles.bulletinIcon, { backgroundColor: '#007AFF20' }]}>
-          <MaterialIcons name="assignment" size={28} color="#007AFF" />
+        <View style={[styles.bulletinIcon, { backgroundColor: '#007AFF15' }]}>
+          <MaterialIcons name="assignment" size={26} color="#007AFF" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.bulletinDate, { color: textColor }]}>
             Buletin {bulletin.dateLabel}
           </Text>
-          <Text style={[styles.bulletinCount, { color: textColor }]}>
-            {bulletin.analyses.length} analize
+          <Text style={[styles.bulletinCount, { color: isDark ? '#8E8E93' : '#666' }]}>
+            {bulletin.analyses.length} analize înregistrate
           </Text>
         </View>
         <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-          <MaterialIcons name="delete" size={24} color="#FF3B30" />
+          <MaterialIcons name="delete" size={22} color="#FF3B30" />
         </TouchableOpacity>
       </View>
       <View style={styles.bulletinPreview}>
-        {bulletin.analyses.slice(0, 3).map((analysis: any, index: number) => (
-          <View key={index} style={styles.previewItem}>
-            <View style={[styles.previewDot, { backgroundColor: '#007AFF' }]} />
-            <Text
-              style={[styles.previewText, { color: textColor }]}
-              numberOfLines={1}
-            >
-              {analysis.analysisType.name}
-            </Text>
-            <Text style={[styles.previewValue, { color: textColor }]}>
-              {analysis.value || analysis.stringValue}
-            </Text>
-          </View>
-        ))}
+        {bulletin.analyses.slice(0, 3).map((analysis: any, index: number) => {
+          const dotColor = getStatusColor(analysis.status);
+          return (
+            <View key={index} style={styles.previewItem}>
+              <View style={[styles.previewDot, { backgroundColor: dotColor }]} />
+              <Text
+                style={[styles.previewText, { color: textColor }]}
+                numberOfLines={1}
+              >
+                {analysis.analysisType.name}
+              </Text>
+              <Text style={[styles.previewValue, { color: dotColor }]}>
+                {analysis.value || analysis.stringValue}
+              </Text>
+            </View>
+          );
+        })}
       </View>
       <View style={styles.bulletinFooter}>
         <MaterialIcons name="chevron-right" size={24} color="#007AFF" />
@@ -162,10 +171,10 @@ export default function IstoricScreen() {
       const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
 
       const thisWeek = data.filter(
-        (a: any) => new Date(a.date) >= weekAgo
+        (a: any) => new Date(a.date) >= weekAgo,
       ).length;
       const thisMonth = data.filter(
-        (a: any) => new Date(a.date) >= monthAgo
+        (a: any) => new Date(a.date) >= monthAgo,
       ).length;
 
       const groupedByDate: { [key: string]: any[] } = {};
@@ -185,11 +194,11 @@ export default function IstoricScreen() {
             year: 'numeric',
           }),
           analyses: analyses.sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
           ),
         }))
         .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
 
       setBulletins(bulletinsArray);
@@ -211,9 +220,12 @@ export default function IstoricScreen() {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchAnalyses();
-  }, [fetchAnalyses]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnalyses();
+    }, [fetchAnalyses]),
+  );
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchAnalyses();
@@ -230,7 +242,7 @@ export default function IstoricScreen() {
     try {
       await axios.delete(
         `${API_URL}/api/analyses?date=${encodeURIComponent(isoDate)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       Toast.show({
         type: 'success',
@@ -357,7 +369,6 @@ export default function IstoricScreen() {
   );
 }
 
-// ... Styles RĂMÂN IDENTICE ...
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },

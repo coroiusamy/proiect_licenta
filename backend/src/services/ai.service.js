@@ -13,7 +13,7 @@ const kbPath = path.join(__dirname, '../../data/medical_kb.json');
 let knowledgeBase = [];
 
 // ============================================
-// HELPER: Salvare Dataset
+// Salvare în dataset pentru antrenare
 // ============================================
 const saveToDataset = (userPrompt, assistantResponse) => {
   try {
@@ -29,23 +29,22 @@ const saveToDataset = (userPrompt, assistantResponse) => {
     };
     fs.appendFileSync(datasetPath, JSON.stringify(entry) + '\n');
   } catch (err) {
-    console.error('Eroare la salvare dataset:', err.message);
+    // Eroarea la salvarea dataset-ului nu afectează funcționalitatea principală
   }
 };
 
 // ============================================
-// Încărcare Knowledge Base
+// Încărcare bază de cunoștințe medicale
 // ============================================
 try {
   const rawData = fs.readFileSync(kbPath, 'utf8');
   knowledgeBase = JSON.parse(rawData);
-  console.log(`RAG: Baza medicală încărcată (${knowledgeBase.length} intrări)`);
 } catch (err) {
-  console.error('RAG: Nu s-a putut încărca medical_kb.json', err);
+  // Baza de cunoștințe nu a putut fi încărcată - funcționalitatea RAG va fi dezactivată
 }
 
 // ============================================
-// Retrieve Context din Knowledge Base
+// Extragere context din baza de cunoștințe
 // ============================================
 function retrieveContext(analysisName) {
   const normalize = (str) => str.toLowerCase().trim();
@@ -57,7 +56,7 @@ function retrieveContext(analysisName) {
 }
 
 // ============================================
-// SEVERITATE ÎMBUNĂTĂȚITĂ - Mai nuanțată
+// Calcul severitate
 // ============================================
 function detectSeverity(value, refMin, refMax, status) {
   if (status === 'normal')
@@ -77,7 +76,6 @@ function detectSeverity(value, refMin, refMax, status) {
     if (ratio >= 1.5) {
       return { level: 'MODERAT', urgency: 'programare', tone: 'calm_atent' };
     }
-    // ratio < 1.5 - doar ușor peste normal
     return { level: 'USOR_CRESCUT', urgency: 'mentionare', tone: 'calm' };
   }
 
@@ -96,7 +94,7 @@ function detectSeverity(value, refMin, refMax, status) {
     return { level: 'USOR_SCAZUT', urgency: 'mentionare', tone: 'calm' };
   }
 
-  // Fallback
+  // Valoare implicită
   return {
     level: status === 'high' ? 'CRESCUT' : 'SCAZUT',
     urgency: 'programare',
@@ -157,7 +155,7 @@ export async function generateWellnessAdvice(
   const severity = detectSeverity(value, refMin, refMax, status);
   const simpleDesc = getSimpleDescription(analysisName, contextData);
 
-  // Cazuri critice - răspuns hardcodat dar empatic
+  // Cazuri critice
   if (severity.level === 'CRITIC') {
     const criticalMessage =
       status === 'high'
@@ -171,7 +169,7 @@ export async function generateWellnessAdvice(
   }
 
   // ============================================
-  // PROMPT ÎMBUNĂTĂȚIT - Focus pe empatie, fără diagnostic
+  // PROMPT ÎMBUNĂTĂȚIT - Accent pe empatie, fără diagnostic
   // ============================================
 
   // Determinare ton și formulări bazate pe severitate
@@ -245,7 +243,7 @@ OBLIGATORIU:
 Răspunde ACUM (3-4 propoziții, un paragraf):`;
 
   // ============================================
-  // Apel AI
+  // Apel către modelul de limbaj
   // ============================================
   try {
     const response = await ollama.chat({
@@ -310,7 +308,6 @@ Răspunde ACUM (3-4 propoziții, un paragraf):`;
 
     return advice + disclaimer;
   } catch (error) {
-    console.error('Eroare Ollama:', error);
     const fallback = generateFallbackAdvice(
       analysisName,
       value,
@@ -329,7 +326,7 @@ Răspunde ACUM (3-4 propoziții, un paragraf):`;
 }
 
 // ============================================
-// FALLBACK EMPATIC - Fără AI
+// Răspuns de rezervă - Fără AI
 // ============================================
 function generateFallbackAdvice(
   analysisName,

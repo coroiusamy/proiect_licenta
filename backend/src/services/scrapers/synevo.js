@@ -1,7 +1,6 @@
 export const scrapeSynevo = async (browser, analysisName) => {
   const results = [];
   try {
-    console.log('   -> 🔵 Scrape Synevo...');
     const page = await browser.newPage();
 
     // Optimizare: Blocăm imaginile și fonturile pentru viteză
@@ -50,7 +49,7 @@ export const scrapeSynevo = async (browser, analysisName) => {
     if (data.length > 0) results.push(...data);
     await page.close(); // Închidem tab-ul după ce terminăm
   } catch (err) {
-    console.error('   ❌ Eroare Synevo:', err.message);
+    // Eroare la colectarea prețurilor Synevo
   }
 
   return results;

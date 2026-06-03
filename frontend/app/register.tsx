@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import axios, { isAxiosError } from 'axios';
 import Toast from 'react-native-toast-message';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
@@ -28,6 +29,7 @@ export default function RegisterScreen() {
   const [role, setRole] = useState<'patient' | 'doctor'>('patient');
   const [specialty, setSpecialty] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<'firstName' | 'lastName' | 'email' | 'password' | 'specialty' | null>(null);
 
   // Referințe pentru navigarea între input-uri cu tasta "Next"
   const lastNameRef = useRef<TextInput>(null);
@@ -39,9 +41,10 @@ export default function RegisterScreen() {
   const isDark = colorScheme === 'dark';
 
   // Culori dinamice
-  const inputBg = isDark ? '#2C2C2E' : '#F2F2F7';
+  const inputBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const inputColor = isDark ? '#FFFFFF' : '#000000';
-  const placeholderColor = isDark ? '#8E8E93' : '#C7C7CC';
+  const placeholderColor = isDark ? '#8E8E93' : '#A1A1A6';
+  const containerBg = isDark ? '#000000' : '#F8F9FA';
 
   const handleRegister = async () => {
     if (!firstName || !lastName || !email || !password) {
@@ -96,14 +99,17 @@ export default function RegisterScreen() {
     }
   };
 
-  const inputCommonStyle = [
-    styles.input,
-    { backgroundColor: inputBg, color: inputColor },
-  ];
+  const getStyleForInput = (id: 'firstName' | 'lastName' | 'email' | 'password' | 'specialty') => {
+    return [
+      styles.input,
+      { backgroundColor: inputBg, color: inputColor },
+      focusedInput === id && styles.inputFocused,
+    ];
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <ThemedView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: containerBg }]} edges={['top', 'bottom']}>
+      <ThemedView style={[styles.container, { backgroundColor: containerBg }]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -111,67 +117,77 @@ export default function RegisterScreen() {
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
+            {/* BRANDING LOGO */}
+            <View style={styles.logoSection}>
+              <View style={[styles.logoIconBg, { backgroundColor: '#007AFF15' }]}>
+                <MaterialIcons name="healing" size={32} color="#007AFF" />
+              </View>
+            </View>
+
             <ThemedText style={styles.title}>Creează Cont</ThemedText>
             <ThemedText style={styles.subtitle}>
-              Completează detaliile tale
+              Creează un cont nou pentru a începe
             </ThemedText>
 
             {/* SELECTOR ROL */}
-            <ThemedText style={styles.roleLabel}>Sunt:</ThemedText>
-            <View style={styles.roleToggle}>
-              <TouchableOpacity
-                style={[
-                  styles.roleOption,
-                  role === 'patient' && styles.roleOptionActive,
-                  { borderTopLeftRadius: 12, borderBottomLeftRadius: 12 },
-                ]}
-                onPress={() => setRole('patient')}
-              >
-                <ThemedText
+            <View style={styles.roleContainer}>
+              <ThemedText style={styles.roleLabel}>Tip cont:</ThemedText>
+              <View style={[styles.roleToggle, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA70' }]}>
+                <TouchableOpacity
                   style={[
-                    styles.roleText,
-                    role === 'patient' && styles.roleTextActive,
+                    styles.roleOption,
+                    role === 'patient' && styles.roleOptionActive,
                   ]}
+                  onPress={() => setRole('patient')}
                 >
-                  🧑 Pacient
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.roleOption,
-                  role === 'doctor' && styles.roleOptionActive,
-                  { borderTopRightRadius: 12, borderBottomRightRadius: 12 },
-                ]}
-                onPress={() => setRole('doctor')}
-              >
-                <ThemedText
+                  <ThemedText
+                    style={[
+                      styles.roleText,
+                      role === 'patient' && styles.roleTextActive,
+                    ]}
+                  >
+                    🧑 Pacient
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={[
-                    styles.roleText,
-                    role === 'doctor' && styles.roleTextActive,
+                    styles.roleOption,
+                    role === 'doctor' && styles.roleOptionActive,
                   ]}
+                  onPress={() => setRole('doctor')}
                 >
-                  🩺 Medic
-                </ThemedText>
-              </TouchableOpacity>
+                  <ThemedText
+                    style={[
+                      styles.roleText,
+                      role === 'doctor' && styles.roleTextActive,
+                    ]}
+                  >
+                    🩺 Medic
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* PRENUME */}
             <TextInput
-              style={inputCommonStyle}
+              style={getStyleForInput('firstName')}
               placeholder="Prenume"
               value={firstName}
               onChangeText={setFirstName}
               placeholderTextColor={placeholderColor}
               returnKeyType="next"
-              onSubmitEditing={() => lastNameRef.current?.focus()} // Sare la următorul
+              onSubmitEditing={() => lastNameRef.current?.focus()}
               blurOnSubmit={false}
+              onFocus={() => setFocusedInput('firstName')}
+              onBlur={() => setFocusedInput(null)}
             />
 
             {/* NUME */}
             <TextInput
               ref={lastNameRef}
-              style={inputCommonStyle}
+              style={getStyleForInput('lastName')}
               placeholder="Nume"
               value={lastName}
               onChangeText={setLastName}
@@ -179,12 +195,14 @@ export default function RegisterScreen() {
               returnKeyType="next"
               onSubmitEditing={() => emailRef.current?.focus()}
               blurOnSubmit={false}
+              onFocus={() => setFocusedInput('lastName')}
+              onBlur={() => setFocusedInput(null)}
             />
 
             {/* EMAIL */}
             <TextInput
               ref={emailRef}
-              style={inputCommonStyle}
+              style={getStyleForInput('email')}
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
@@ -195,12 +213,14 @@ export default function RegisterScreen() {
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
               blurOnSubmit={false}
+              onFocus={() => setFocusedInput('email')}
+              onBlur={() => setFocusedInput(null)}
             />
 
             {/* PAROLĂ */}
             <TextInput
               ref={passwordRef}
-              style={inputCommonStyle}
+              style={getStyleForInput('password')}
               placeholder="Parolă (min. 8 caractere, 1 majusculă)"
               value={password}
               onChangeText={setPassword}
@@ -213,19 +233,23 @@ export default function RegisterScreen() {
                   : handleRegister()
               }
               blurOnSubmit={role !== 'doctor'}
+              onFocus={() => setFocusedInput('password')}
+              onBlur={() => setFocusedInput(null)}
             />
 
             {/* SPECIALITATE (doar pentru medic) */}
             {role === 'doctor' && (
               <TextInput
                 ref={specialtyRef}
-                style={inputCommonStyle}
+                style={getStyleForInput('specialty')}
                 placeholder="Specialitate (ex: Cardiologie)"
                 value={specialty}
                 onChangeText={setSpecialty}
                 placeholderTextColor={placeholderColor}
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
+                onFocus={() => setFocusedInput('specialty')}
+                onBlur={() => setFocusedInput(null)}
               />
             )}
 
@@ -251,7 +275,7 @@ export default function RegisterScreen() {
               onPress={() => router.back()}
               disabled={isLoading}
             >
-              <ThemedText style={{ color: isDark ? '#A1A1A6' : '#666' }}>
+              <ThemedText style={{ color: isDark ? '#A1A1A6' : '#666', fontSize: 15 }}>
                 Ai deja cont?{' '}
                 <ThemedText style={styles.linkText}>Loghează-te</ThemedText>
               </ThemedText>
@@ -265,37 +289,82 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 20 },
+  scrollContent: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 6,
+  },
+  logoIconBg: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  logoText: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: '#007AFF',
+  },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
-    marginBottom: 30,
+    fontSize: 15,
+    opacity: 0.6,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   input: {
-    height: 50,
-    borderRadius: 12,
-    paddingHorizontal: 15,
+    height: 52,
+    borderRadius: 14,
+    paddingHorizontal: 16,
     marginBottom: 15,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  inputFocused: {
+    borderColor: '#007AFF',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   buttonContainer: {
     backgroundColor: '#007AFF',
-    paddingVertical: 15,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
     marginTop: 10,
-    height: 50,
+    height: 52,
     justifyContent: 'center',
     shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -303,37 +372,43 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  loginLink: { marginTop: 20, alignItems: 'center', padding: 10 },
-  linkText: { color: '#007AFF', fontWeight: 'bold' },
+  loginLink: { marginTop: 24, alignItems: 'center', padding: 10 },
+  linkText: { color: '#007AFF', fontWeight: '700' },
+  roleContainer: {
+    marginBottom: 20,
+  },
   roleLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
+    opacity: 0.8,
   },
   roleToggle: {
     flexDirection: 'row',
-    marginBottom: 20,
     borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#007AFF',
+    padding: 3,
   },
   roleOption: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    borderRadius: 9,
   },
   roleOptionActive: {
     backgroundColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   roleText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#8E8E93',
   },
   roleTextActive: {
     color: '#FFFFFF',

@@ -1,4 +1,4 @@
-// Fallback for using MaterialIcons on Android and web.
+// Alternativă pentru MaterialIcons pe Android și web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
@@ -12,25 +12,24 @@ type IconMapping = Record<
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ * Mapare SF Symbols -> Material Icons.
+ * - vezi Material Icons în [Icons Directory](https://icons.expo.fyi).
+ * - vezi SF Symbols în aplicația [SF Symbols](https://developer.apple.com/sf-symbols/).
  */
 const MAPPING = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
-  // Tabs / common symbols used in the app
-  'list.bullet': 'format-list-bulleted', // SF: list.bullet -> Material: format-list-bulleted
-  'plus.circle.fill': 'add', // use simple add icon (MaterialIcons has no exact filled circle name)
+  // Tab-uri și simboluri comune în aplicație
+  'list.bullet': 'format-list-bulleted',
+  'plus.circle.fill': 'add',
   'person.fill': 'person',
 } as IconMapping;
 
 /**
- * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
+ * Componentă de icoane care folosește SF Symbols nativ pe iOS și Material Icons pe Android/web.
+ * Asigură consistență vizuală și utilizare optimă a resurselor.
  */
 export function IconSymbol({
   name,
@@ -44,7 +43,7 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  // Defensive: if a mapping is missing, fall back to a generic icon to avoid rendering nothing
+  // Defensiv: dacă lipsește maparea, folosim o icoană generică
   const mappedName =
     (MAPPING as Record<string, string>)[name] || 'help-outline';
   return (

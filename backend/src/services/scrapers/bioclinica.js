@@ -1,11 +1,10 @@
 export const scrapeBioclinica = async (browser, analysisName) => {
   const results = [];
   try {
-    console.log('   -> 🟢 Scrape Bioclinica...');
     const page = await browser.newPage();
 
     const searchUrl = `https://bioclinica.ro/cautare/${encodeURIComponent(
-      analysisName
+      analysisName,
     )}`;
     await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
 
@@ -72,13 +71,13 @@ export const scrapeBioclinica = async (browser, analysisName) => {
           });
         }
       } catch (innerErr) {
-        /* ignore navigation errors */
+        // Eroare la navigare, continuăm
       }
     }
 
     await page.close();
   } catch (err) {
-    console.error('   ❌ Eroare Bioclinica:', err.message);
+    // Eroare la colectarea prețurilor Bioclinica
   }
 
   return results;

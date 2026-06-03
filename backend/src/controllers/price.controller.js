@@ -12,7 +12,7 @@ export const getPrices = async (req, res) => {
   try {
     const { analysisName, analysisNames } = req.query;
 
-    // BATCH MODE (multiple analize)
+    // MOD BATCH (mai multe analize)
     if (analysisNames) {
       const names = analysisNames
         .split(',')
@@ -25,15 +25,16 @@ export const getPrices = async (req, res) => {
           .json({ message: 'Lista de analize este goală.' });
       }
 
-      console.log(`📦 [Controller] Batch request: ${names.length} analize`);
-
-      // Scrape toate analizele (cu cache)
       const batchResults = await scrapePricesBatch(names);
-
-      // Calculează pachete (preț total per clinică)
       const packages = calculatePackages(batchResults);
 
       if (packages.length === 0) {
+        return res
+          .status(400)
+          .json({ message: 'Lista de analize este goală.' });
+      }
+
+      if (names.length === 0) {
         return res.status(200).json({
           message:
             'Nu am găsit nicio clinică care să ofere TOATE analizele din pachet.',
@@ -50,10 +51,8 @@ export const getPrices = async (req, res) => {
       });
     }
 
-    // SINGLE MODE (o singură analiză)
+    // MOD INDIVIDUAL (o singură analiză)
     if (analysisName) {
-      console.log(`🔍 [Controller] Single request: "${analysisName}"`);
-
       const prices = await scrapePrices(analysisName);
 
       if (prices.length === 0) {
@@ -77,7 +76,6 @@ export const getPrices = async (req, res) => {
         'Parametru lipsă. Folosește: ?analysisName=X sau ?analysisNames=X,Y,Z',
     });
   } catch (error) {
-    console.error('❌ [Controller] Eroare:', error);
     res.status(500).json({ message: 'Eroare la căutarea prețurilor.' });
   }
 };
@@ -100,10 +98,6 @@ export const getPricesBatchPost = async (req, res) => {
         .json({ message: 'Lista de analize este invalidă.' });
     }
 
-    console.log(
-      `📦 [Controller POST] Batch request: ${analysisNames.length} analize`
-    );
-
     const batchResults = await scrapePricesBatch(analysisNames);
     const packages = calculatePackages(batchResults);
 
@@ -122,7 +116,6 @@ export const getPricesBatchPost = async (req, res) => {
       data: packages,
     });
   } catch (error) {
-    console.error('❌ [Controller POST] Eroare:', error);
     res.status(500).json({ message: 'Eroare la căutarea prețurilor.' });
   }
 };

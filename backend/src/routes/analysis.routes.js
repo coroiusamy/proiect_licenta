@@ -7,6 +7,7 @@ import {
   addAnalysisResult,
   getChartData,
   deleteAnalysesByDate,
+  getHealthSummary,
 } from '../controllers/analysis.controller.js';
 import { uploadAnalysisFile } from '../controllers/upload.controller.js';
 import multer from 'multer';
@@ -14,7 +15,13 @@ import multer from 'multer';
 const router = Router();
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: {
+    files: 10,
+    fileSize: 20 * 1024 * 1024,
+  },
+});
 
 // --- Rute Publice ---
 // Oricine (chiar și nelogat) poate vedea ce tipuri de analize există
@@ -26,6 +33,10 @@ router.get('/types', getAllAnalysisTypes);
 // GET /api/analyses/
 //istoric analize personale
 router.get('/', protect, getMyResults);
+
+// GET /api/analyses/health-summary
+// Scor de sanatate si raport AI global
+router.get('/health-summary', protect, patientOnly, getHealthSummary);
 
 // POST /api/analyses/
 // Adauga o analiza noua
@@ -41,7 +52,10 @@ router.post(
   '/upload',
   protect,
   patientOnly,
-  upload.single('analysisFile'),
+  upload.fields([
+    { name: 'analysisFile', maxCount: 1 },
+    { name: 'analysisFiles', maxCount: 10 },
+  ]),
   uploadAnalysisFile,
 );
 

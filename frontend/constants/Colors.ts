@@ -1,5 +1,5 @@
 /**
- * Colors for light and dark themes
+ * Culori pentru temele light și dark
  */
 
 const tintColorLight = '#007AFF';

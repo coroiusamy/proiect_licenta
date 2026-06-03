@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// TTL: 24 ore
+// Durată de viață cache: 24 ore
 const CACHE_TTL_HOURS = 24;
 
 /**
@@ -11,14 +11,10 @@ const CACHE_TTL_HOURS = 24;
  * @returns {Object} { cached: [], missing: [] }
  */
 export const checkCache = async (analysisNames) => {
-  console.log(
-    `🔍 [Cache] Verificăm cache pentru ${analysisNames.length} analize...`
-  );
-
   const now = new Date();
   const cutoffTime = new Date(now.getTime() - CACHE_TTL_HOURS * 60 * 60 * 1000);
 
-  // Fetch toate prețurile pentru analizele date
+  // Preia toate prețurile pentru analizele date
   const cachedPrices = await prisma.externalPrice.findMany({
     where: {
       analysisName: { in: analysisNames },
@@ -43,11 +39,8 @@ export const checkCache = async (analysisNames) => {
 
   // Identifică ce lipsește
   const missing = analysisNames.filter(
-    (name) => !cachedMap[name] || cachedMap[name].length === 0
+    (name) => !cachedMap[name] || cachedMap[name].length === 0,
   );
-
-  console.log(`✅ [Cache] Găsite în cache: ${Object.keys(cachedMap).length}`);
-  console.log(`⚠️ [Cache] Lipsesc: ${missing.length}`);
 
   return {
     cached: cachedMap,
@@ -62,10 +55,6 @@ export const checkCache = async (analysisNames) => {
  */
 export const savePricesToCache = async (results, standardName) => {
   if (!results || results.length === 0) return;
-
-  console.log(
-    `💾 [Cache] Salvăm ${results.length} prețuri pentru "${standardName}"...`
-  );
 
   try {
     const operations = results.map((result) => {
@@ -93,11 +82,8 @@ export const savePricesToCache = async (results, standardName) => {
     });
 
     await prisma.$transaction(operations);
-    console.log(
-      `✅ [Cache] Salvate ${operations.length} prețuri pentru "${standardName}"`
-    );
   } catch (error) {
-    console.error(`❌ [Cache] Eroare salvare:`, error);
+    // Eroare la salvarea în cache - nu afectează funcționalitatea principală
   }
 };
 
@@ -106,12 +92,9 @@ export const savePricesToCache = async (results, standardName) => {
  * @param {string} analysisName - Numele analizei
  */
 export const invalidateCache = async (analysisName) => {
-  const result = await prisma.externalPrice.deleteMany({
+  await prisma.externalPrice.deleteMany({
     where: { analysisName: analysisName },
   });
-  console.log(
-    `🗑️ [Cache] Invalidat cache pentru "${analysisName}" - ${result.count} intrări șterse`
-  );
 };
 
 /**
@@ -121,13 +104,9 @@ export const invalidateCache = async (analysisName) => {
 export const cleanOldPrices = async (days = 7) => {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  const result = await prisma.externalPrice.deleteMany({
+  await prisma.externalPrice.deleteMany({
     where: {
       lastUpdated: { lt: cutoff },
     },
   });
-
-  console.log(
-    `🧹 [Cache] Șterse ${result.count} prețuri mai vechi de ${days} zile`
-  );
 };

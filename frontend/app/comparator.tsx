@@ -12,6 +12,7 @@ import {
   Modal,
   ScrollView,
   Keyboard,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -41,10 +42,20 @@ export default function ComparatorScreen() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [mode, setMode] = useState<'single' | 'batch'>('single');
+  const [searchFocused, setSearchFocused] = useState(false);
 
-  // Modal pentru breakdown
+  // Modal pentru detalii prețuri
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
+
+  const [isMounting, setIsMounting] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsMounting(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
@@ -65,14 +76,13 @@ export default function ComparatorScreen() {
     setSelectedAnalyses(selectedAnalyses.filter((a) => a !== name));
   };
 
-  // Căutare
   const searchPrices = async () => {
     // Single mode - verifică că ai query
     if (mode === 'single' && !query.trim()) {
       Toast.show({
         type: 'error',
-        text1: 'Lipsește numele',
-        text2: 'Te rog să introduci o analiză pentru căutare',
+        text1: 'Ce analiză cauți? 🔍',
+        text2: 'Te rugăm să introduci numele analizei pentru a compara prețurile.',
       });
       return;
     }
@@ -94,8 +104,8 @@ export default function ComparatorScreen() {
     if (mode === 'batch' && finalAnalyses.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'Lipsesc analizele',
-        text2: 'Adaugă cel puțin o analiză pentru a compara pachete',
+        text1: 'Listă de căutare goală ⚠️',
+        text2: 'Adaugă cel puțin o analiză pentru a putea calcula prețul total al pachetului.',
       });
       return;
     }
@@ -135,17 +145,17 @@ export default function ComparatorScreen() {
       if (response.data.data && response.data.data.length > 0) {
         Toast.show({
           type: 'success',
-          text1: mode === 'single' ? 'Prețuri găsite!' : 'Pachete găsite!',
-          text2: `${response.data.data.length} ${
-            mode === 'single' ? 'rezultate' : 'pachete'
-          } disponibile`,
+          text1: mode === 'single' ? 'Oferte găsite! 🏷️' : 'Pachete comparative generate! 📊',
+          text2: mode === 'single'
+            ? `Am găsit ${response.data.data.length} prețuri diferite la clinicile partenere.`
+            : `Am structurat ${response.data.data.length} pachete comparabile de preț.`,
         });
       }
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Nu am putut prelua prețurile. Verifică conexiunea.',
+        text1: 'Conexiune eșuată ❌',
+        text2: 'Nu am putut prelua prețurile. Te rugăm să verifici conexiunea la internet.',
       });
     } finally {
       setLoading(false);
@@ -156,8 +166,8 @@ export default function ComparatorScreen() {
     Linking.openURL(url).catch(() => {
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Nu s-a putut deschide link-ul.',
+        text1: 'Eroare de navigare ❌',
+        text2: 'Nu s-a putut deschide pagina oficială a clinicii.',
       });
     });
   };
@@ -185,17 +195,24 @@ export default function ComparatorScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: cardBg }]}
+        style={[
+          styles.card, 
+          { 
+            backgroundColor: cardBg,
+            borderLeftWidth: 4,
+            borderLeftColor: clinicColor
+          }
+        ]}
         onPress={() => openLink(item.url)}
         activeOpacity={0.7}
       >
         {cheapest && (
           <View style={styles.firstBadge}>
-            <MaterialIcons name="emoji-events" size={14} color="#FFD700" />
+            <MaterialIcons name="emoji-events" size={16} color="#FFD700" />
           </View>
         )}
 
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingLeft: 4 }}>
           <Text style={[styles.clinicName, { color: clinicColor }]}>
             {item.clinic}
           </Text>
@@ -239,24 +256,31 @@ export default function ComparatorScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: cardBg }]}
+        style={[
+          styles.card, 
+          { 
+            backgroundColor: cardBg,
+            borderLeftWidth: 4,
+            borderLeftColor: clinicColor
+          }
+        ]}
         onPress={() => openPackageDetails(item)}
         activeOpacity={0.7}
       >
         {cheapest && (
           <View style={styles.firstBadge}>
-            <MaterialIcons name="emoji-events" size={14} color="#FFD700" />
+            <MaterialIcons name="emoji-events" size={16} color="#FFD700" />
           </View>
         )}
 
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingLeft: 4 }}>
           <Text style={[styles.clinicName, { color: clinicColor }]}>
             {item.clinic}
           </Text>
           <Text
             style={[
               styles.packageInfo,
-              { color: isComplete ? textColor : '#FF9500' },
+              { color: isComplete ? textColor : '#FF9500', fontWeight: '500' },
             ]}
           >
             {isComplete
@@ -286,6 +310,17 @@ export default function ComparatorScreen() {
     );
   };
 
+  if (isMounting) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: containerBg, justifyContent: 'center', alignItems: 'center' }}
+        edges={['top']}
+      >
+        <ActivityIndicator size="large" color="#007AFF" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: containerBg }]}
@@ -307,7 +342,7 @@ export default function ComparatorScreen() {
       </View>
 
       {/* Mode Selector */}
-      <View style={styles.modeSelector}>
+      <View style={[styles.modeSelector, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA70' }]}>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'single' && styles.modeBtnActive]}
           onPress={() => setMode('single')}
@@ -338,7 +373,11 @@ export default function ComparatorScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchSection}>
-        <View style={[styles.searchBar, { backgroundColor: inputBg }]}>
+        <View style={[
+          styles.searchBar, 
+          { backgroundColor: inputBg },
+          searchFocused && styles.searchBarFocused
+        ]}>
           <MaterialIcons name="search" size={22} color="#8E8E93" />
           <TextInput
             style={[styles.input, { color: textColor }]}
@@ -348,6 +387,8 @@ export default function ComparatorScreen() {
             placeholderTextColor="#8E8E93"
             value={query}
             onChangeText={setQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             onSubmitEditing={() => {
               if (mode === 'batch') {
                 addAnalysis();
@@ -617,7 +658,7 @@ export default function ComparatorScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Header
+  // Antet
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -629,22 +670,28 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 2 },
   headerSubtitle: { fontSize: 14, opacity: 0.7 },
 
-  // Mode Selector
+  // Selector mod
   modeSelector: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    marginHorizontal: 20,
     marginBottom: 15,
-    gap: 10,
+    borderRadius: 12,
+    padding: 3,
   },
   modeBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
+    paddingVertical: 10,
+    borderRadius: 9,
+    backgroundColor: 'transparent',
     alignItems: 'center',
   },
   modeBtnActive: {
     backgroundColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   modeBtnText: {
     fontSize: 14,
@@ -655,7 +702,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Search
+  // Căutare
   searchSection: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -668,11 +715,16 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 12,
     paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  searchBarFocused: {
+    borderColor: '#007AFF',
   },
   input: { flex: 1, fontSize: 16, marginLeft: 10 },
   searchBtn: {
@@ -683,9 +735,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
-  // Chips Container (Batch Mode)
+  // Etichete (mod batch)
   chipsContainer: {
     paddingHorizontal: 20,
     marginBottom: 15,
@@ -713,7 +770,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Result Count
+  // Număr rezultate
   resultCount: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -724,10 +781,10 @@ const styles = StyleSheet.create({
   countText: { fontSize: 14, fontWeight: '600' },
   rangeText: { fontSize: 13, color: '#8E8E93' },
 
-  // List
+  // Listă
   listContent: { paddingHorizontal: 20, paddingBottom: 30 },
 
-  // Card
+  // Card preț
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -755,7 +812,7 @@ const styles = StyleSheet.create({
   price: { fontSize: 24, fontWeight: 'bold' },
   currency: { fontSize: 12, color: '#8E8E93' },
 
-  // Loading
+  // Încărcare
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -781,7 +838,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Empty
+  // Fără rezultate
   empty: {
     flex: 1,
     justifyContent: 'center',
@@ -809,7 +866,7 @@ const styles = StyleSheet.create({
   },
   exampleChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
 
-  // Modal
+  // Modal detalii
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
