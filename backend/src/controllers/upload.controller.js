@@ -483,6 +483,7 @@ export const uploadAnalysisFile = async (req, res) => {
 
     // 3. Parsare inteligentă
     let extractedResults = [];
+    let usedLlmFallback = false;
 
     if (clinic === 'Regina Maria') {
       extractedResults = await parseReginaMariaPdf(textContent, userId);
@@ -496,10 +497,25 @@ export const uploadAnalysisFile = async (req, res) => {
       });
     }
 
+    // HIBRID FALLBACK: Dacă nu s-au găsit rezultate sau clinica este Unknown, rulăm parsing-ul LLM
+    if (extractedResults.length === 0 || clinic === 'Unknown') {
+      console.log(`[UploadAPI] Rulăm parsing LLM ca fallback (clinic: ${clinic}, regex results count: ${extractedResults.length})...`);
+      try {
+        const { parseLlmPdf } = await import('../services/parseLlm.service.js');
+        const llmResults = await parseLlmPdf(textContent, userId);
+        if (llmResults && llmResults.length > 0) {
+          extractedResults = llmResults;
+          usedLlmFallback = true;
+        }
+      } catch (llmError) {
+        console.error('[UploadAPI] LLM parsing fallback failed:', llmError);
+      }
+    }
+
     if (extractedResults.length === 0) {
       console.log('[UploadAPI] no extracted results');
       return res.status(400).json({
-        message: 'Nu s-au putut extrage analize. Încearcă un PDF mai clar.',
+        message: 'Nu s-au putut extrage analize. Încearcă un PDF mai clar sau o altă metodă.',
       });
     }
 
@@ -543,7 +559,7 @@ export const uploadAnalysisFile = async (req, res) => {
           date: item.date,
           value: item.value,
           stringValue: item.stringValue,
-          notes: `Importat din ${uploadedFiles.map((file) => file.originalname).join(', ')} (${clinic})`,
+          notes: `Importat din ${uploadedFiles.map((file) => file.originalname).join(', ')} (${clinic})${usedLlmFallback ? ' [LLM Fallback]' : ''}`,
           status: status,
           aiAdvice: aiAdvice,
         },

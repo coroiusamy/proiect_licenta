@@ -34,6 +34,9 @@ export default function TabLayout() {
         tabBarActiveTintColor: activeTintColor,
         tabBarInactiveTintColor: inactiveTintColor,
         headerShown: false,
+        sceneContainerStyle: {
+          backgroundColor: isDark ? '#000000' : '#F8F9FA',
+        },
         tabBarStyle: {
           backgroundColor: backgroundColor,
           borderTopColor: borderColor,

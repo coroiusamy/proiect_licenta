@@ -12,6 +12,7 @@ import {
   Modal,
   ScrollView,
   Keyboard,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -47,6 +48,15 @@ export default function ComparatorScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
+  const [isMounting, setIsMounting] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsMounting(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
   const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
@@ -71,8 +81,8 @@ export default function ComparatorScreen() {
     if (mode === 'single' && !query.trim()) {
       Toast.show({
         type: 'error',
-        text1: 'Lipsește numele',
-        text2: 'Te rog să introduci o analiză pentru căutare',
+        text1: 'Ce analiză cauți? 🔍',
+        text2: 'Te rugăm să introduci numele analizei pentru a compara prețurile.',
       });
       return;
     }
@@ -94,8 +104,8 @@ export default function ComparatorScreen() {
     if (mode === 'batch' && finalAnalyses.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'Lipsesc analizele',
-        text2: 'Adaugă cel puțin o analiză pentru a compara pachete',
+        text1: 'Listă de căutare goală ⚠️',
+        text2: 'Adaugă cel puțin o analiză pentru a putea calcula prețul total al pachetului.',
       });
       return;
     }
@@ -135,17 +145,17 @@ export default function ComparatorScreen() {
       if (response.data.data && response.data.data.length > 0) {
         Toast.show({
           type: 'success',
-          text1: mode === 'single' ? 'Prețuri găsite!' : 'Pachete găsite!',
-          text2: `${response.data.data.length} ${
-            mode === 'single' ? 'rezultate' : 'pachete'
-          } disponibile`,
+          text1: mode === 'single' ? 'Oferte găsite! 🏷️' : 'Pachete comparative generate! 📊',
+          text2: mode === 'single'
+            ? `Am găsit ${response.data.data.length} prețuri diferite la clinicile partenere.`
+            : `Am structurat ${response.data.data.length} pachete comparabile de preț.`,
         });
       }
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Nu am putut prelua prețurile. Verifică conexiunea.',
+        text1: 'Conexiune eșuată ❌',
+        text2: 'Nu am putut prelua prețurile. Te rugăm să verifici conexiunea la internet.',
       });
     } finally {
       setLoading(false);
@@ -156,8 +166,8 @@ export default function ComparatorScreen() {
     Linking.openURL(url).catch(() => {
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Nu s-a putut deschide link-ul.',
+        text1: 'Eroare de navigare ❌',
+        text2: 'Nu s-a putut deschide pagina oficială a clinicii.',
       });
     });
   };
@@ -299,6 +309,17 @@ export default function ComparatorScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (isMounting) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: containerBg, justifyContent: 'center', alignItems: 'center' }}
+        edges={['top']}
+      >
+        <ActivityIndicator size="large" color="#007AFF" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView

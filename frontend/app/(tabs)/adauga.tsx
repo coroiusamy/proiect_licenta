@@ -10,6 +10,7 @@ import {
   Modal,
   Pressable,
   Platform,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -41,6 +42,15 @@ export default function AdaugaScreen() {
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
   const [isSourceSheetVisible, setIsSourceSheetVisible] = useState(false);
   const [isPickerBusy, setIsPickerBusy] = useState(false);
+  const [isMounting, setIsMounting] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsMounting(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const pickerBusyRef = useRef(false);
   const acquirePickerLock = () => {
     if (pickerBusyRef.current) return false;
@@ -183,16 +193,16 @@ export default function AdaugaScreen() {
         setFileType('pdf');
         Toast.show({
           type: 'success',
-          text1: 'PDF selectat',
-          text2: file.name,
+          text1: 'Document pregătit 📄',
+          text2: `Am selectat ${file.name} pentru analizare.`,
         });
       }
     } catch (error) {
       logUpload('pickPDF:error', error);
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Nu s-a putut selecta fișierul.',
+        text1: 'Fișier inaccesibil',
+        text2: 'Nu am putut deschide documentul PDF selectat.',
       });
     }
   };
@@ -200,17 +210,6 @@ export default function AdaugaScreen() {
   const pickImage = async () => {
     if (!acquirePickerLock()) return;
     try {
-      if (Platform.OS === 'android' && CAMERA_SAFE_MODE_ANDROID) {
-        logUpload('pickImage:safe_mode_android_redirect_to_gallery');
-        Toast.show({
-          type: 'info',
-          text1: 'Mod stabil Android',
-          text2: 'Folosim galeria pentru a evita închiderea aplicației.',
-        });
-        await pickImagesFromGallery();
-        return;
-      }
-
       logUpload('pickImage:start_camera');
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       logUpload('pickImage:camera_permission', permission?.granted);
@@ -218,8 +217,8 @@ export default function AdaugaScreen() {
       if (!permission.granted) {
         Toast.show({
           type: 'error',
-          text1: 'Permisiune necesară',
-          text2: 'Acordă permisiunea pentru cameră.',
+          text1: 'Acces blocat la cameră 📷',
+          text2: 'Avem nevoie de permisiune pentru a putea scana buletinul de analize.',
         });
         return;
       }
@@ -246,8 +245,8 @@ export default function AdaugaScreen() {
         if ((image.fileSize || 0) > RAW_IMAGE_ACCEPT_MAX_BYTES) {
           Toast.show({
             type: 'info',
-            text1: 'Imagine prea mare',
-            text2: 'Limita brută este 60MB per imagine.',
+            text1: 'Fișier prea mare',
+            text2: 'Această imagine depășește limita de mărime permisă.',
           });
           return;
         }
@@ -256,16 +255,16 @@ export default function AdaugaScreen() {
         setFileType('image');
         Toast.show({
           type: 'success',
-          text1: 'Imagine capturată',
-          text2: 'Imagine adăugată în listă',
+          text1: 'Pagina a fost salvată! 📸',
+          text2: 'Am adăugat fotografia în lista de scanare.',
         });
       }
     } catch (error) {
       logUpload('pickImage:error', error);
       Toast.show({
         type: 'error',
-        text1: 'Camera a eșuat',
-        text2: 'Încearcă din nou sau alege din galerie.',
+        text1: 'Probleme cu camera foto',
+        text2: 'Nu am putut deschide camera. Te rugăm să încerci din nou.',
       });
     } finally {
       releasePickerLock();
@@ -283,8 +282,8 @@ export default function AdaugaScreen() {
       if (!permission.granted) {
         Toast.show({
           type: 'error',
-          text1: 'Permisiune necesară',
-          text2: 'Acordă permisiunea pentru galerie.',
+          text1: 'Acces blocat la galerie 🖼️',
+          text2: 'Te rugăm să permiți accesul pentru a alege analizele din poze.',
         });
         return;
       }
@@ -316,21 +315,24 @@ export default function AdaugaScreen() {
         });
         setFileType('image');
 
+        const pageText = validAssets.length === 1 ? 'o pagină' : `${validAssets.length} pagini`;
+        const skipText = skippedCount === 1 ? 'un fișier prea mare' : `${skippedCount} fișiere prea mari`;
+
         Toast.show({
           type: 'success',
-          text1: 'Imagini selectate',
+          text1: 'Fotografii adăugate! 🖼️',
           text2:
             skippedCount > 0
-              ? `${validAssets.length} adăugate, ${skippedCount} peste 60MB`
-              : `${validAssets.length} pagini adăugate`,
+              ? `Am adăugat ${pageText}. Am ignorat ${skipText}.`
+              : `Am adăugat ${pageText} pentru procesare.`,
         });
       }
     } catch (error) {
       logUpload('pickImagesFromGallery:error', error);
       Toast.show({
         type: 'error',
-        text1: 'Eroare',
-        text2: 'Nu s-au putut selecta imaginile.',
+        text1: 'Selecție eșuată',
+        text2: 'Nu am putut încărca pozele din galerie.',
       });
     } finally {
       releasePickerLock();
@@ -372,107 +374,126 @@ export default function AdaugaScreen() {
       return;
     }
 
-    setIsUploading(true);
+    // Capture states locally for background promise execution
+    const filesToUpload = [...selectedFiles];
+    const uploadMode = fileType;
 
-    try {
-      const formData = new FormData();
+    // Reset local screen state immediately so the user sees instant feedback
+    setSelectedFiles([]);
+    setFileType(null);
+    setIsSourceSheetVisible(false);
 
-      for (let i = 0; i < selectedFiles.length; i++) {
-        let currentFile = selectedFiles[i];
-        const isPdfFile = fileType === 'pdf';
+    // Show initial informative Toast
+    Toast.show({
+      type: 'info',
+      text1: 'Analizele se încarcă... 📤',
+      text2: 'Le procesăm acum. Poți naviga prin aplicație liniștit.',
+      visibilityTime: 4500,
+    });
 
-        if (!isPdfFile) {
-          currentFile = await compressImageForUpload(currentFile, i);
+    // Navigate back to history screen immediately
+    router.replace('/(tabs)/istoric');
+
+    // Run the upload and OCR network call in the background
+    (async () => {
+      try {
+        const formData = new FormData();
+
+        for (let i = 0; i < filesToUpload.length; i++) {
+          let currentFile = filesToUpload[i];
+          const isPdfFile = uploadMode === 'pdf';
+
+          if (!isPdfFile) {
+            currentFile = await compressImageForUpload(currentFile, i);
+          }
+
+          logUpload('uploadFile:prepare_file (bg)', {
+            index: i,
+            uri: currentFile?.uri,
+            name: currentFile?.name,
+            mimeType: currentFile?.mimeType,
+            size: getAssetSize(currentFile),
+          });
+
+          if (!isPdfFile && getAssetSize(currentFile) > RAW_IMAGE_ACCEPT_MAX_BYTES) {
+            Toast.show({
+              type: 'error',
+              text1: 'Fișier prea mare',
+              text2: 'Una dintre imagini depășește limita de mărime admisă.',
+            });
+            return;
+          }
+
+          const fileToUpload: any = {
+            uri: currentFile.uri,
+            type: currentFile.mimeType || (isPdfFile ? 'application/pdf' : 'image/jpeg'),
+            name: currentFile.name || `analysis_${Date.now()}_${i}.${isPdfFile ? 'pdf' : 'jpg'}`,
+          };
+
+          formData.append(
+            isPdfFile ? 'analysisFile' : 'analysisFiles',
+            fileToUpload,
+          );
         }
 
-        logUpload('uploadFile:prepare_file', {
-          index: i,
-          uri: currentFile?.uri,
-          name: currentFile?.name,
-          mimeType: currentFile?.mimeType,
-          size: getAssetSize(currentFile),
+        logUpload('uploadFile:request_send (bg)', {
+          endpoint: `${API_URL}/api/analyses/upload`,
+          mode: uploadMode,
+          filesCount: filesToUpload.length,
         });
 
-        if (
-          !isPdfFile &&
-          getAssetSize(currentFile) > RAW_IMAGE_ACCEPT_MAX_BYTES
-        ) {
-          Toast.show({
-            type: 'error',
-            text1: 'Fișier prea mare',
-            text2: 'Una dintre imagini depășește limita brută de 60MB.',
-          });
-          setIsUploading(false);
-          return;
-        }
-
-        const fileToUpload: any = {
-          uri:
-            Platform.OS === 'android' && currentFile.uri?.startsWith('file://')
-              ? currentFile.uri
-              : currentFile.uri,
-          type:
-            currentFile.mimeType ||
-            (isPdfFile ? 'application/pdf' : 'image/jpeg'),
-          name:
-            currentFile.name ||
-            `analysis_${Date.now()}_${i}.${isPdfFile ? 'pdf' : 'jpg'}`,
-        };
-
-        formData.append(
-          isPdfFile ? 'analysisFile' : 'analysisFiles',
-          fileToUpload,
-        );
-      }
-
-      logUpload('uploadFile:request_send', {
-        endpoint: `${API_URL}/api/analyses/upload`,
-        mode: fileType,
-        filesCount: selectedFiles.length,
-      });
-
-      const response = await axios.post(
-        `${API_URL}/api/analyses/upload`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
+        const response = await axios.post(
+          `${API_URL}/api/analyses/upload`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data',
+            },
+            timeout: 90000, // Safe 90 seconds timeout for background processing
           },
-          timeout: 60000,
-        },
-      );
+        );
 
-      logUpload('uploadFile:response_ok', response?.data);
+        logUpload('uploadFile:response_ok (bg)', response?.data);
 
-      Toast.show({
-        type: 'success',
-        text1: 'Succes!',
-        text2: `${response.data.count} analize adăugate din ${selectedFiles.length} fișier(e)`,
-      });
+        // Global success toast
+        const valText = response.data.count === 1
+          ? 'o valoare nouă'
+          : `${response.data.count} valori noi`;
 
-      setSelectedFiles([]);
-      setFileType(null);
-
-      setTimeout(() => {
-        router.push('/istoric');
-      }, 1500);
-    } catch (error: any) {
-      logUpload('uploadFile:error', {
-        message: error?.message,
-        status: error?.response?.status,
-        data: error?.response?.data,
-      });
-      Toast.show({
-        type: 'error',
-        text1: 'Eroare',
-        text2:
-          error.response?.data?.message || 'Nu s-a putut încărca fișierul.',
-      });
-    } finally {
-      setIsUploading(false);
-    }
+        Toast.show({
+          type: 'success',
+          text1: 'Analize salvate cu succes! 🎉',
+          text2: `Am adăugat ${valText} în istoricul tău medical (${response.data.clinic}).`,
+          visibilityTime: 6000,
+        });
+      } catch (error: any) {
+        logUpload('uploadFile:error (bg)', {
+          message: error?.message,
+          status: error?.response?.status,
+          data: error?.response?.data,
+        });
+        
+        Toast.show({
+          type: 'error',
+          text1: 'Hopa! Am întâmpinat o problemă ❌',
+          text2: error.response?.data?.message || 'Nu am putut citi datele. Te rugăm să încerci din nou cu imagini mai clare.',
+          visibilityTime: 6500,
+        });
+      }
+    })();
   };
+
+  if (isMounting) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: containerBg, justifyContent: 'center', alignItems: 'center' }}
+        edges={['top']}
+      >
+        <ActivityIndicator size="large" color="#007AFF" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -533,7 +554,9 @@ export default function AdaugaScreen() {
                 <Text style={[styles.fileName, { color: textColor }]}>
                   {fileType === 'pdf'
                     ? selectedFiles[0]?.name || 'PDF selectat'
-                    : `${selectedFiles.length} imagine(i) selectată(e)`}
+                    : selectedFiles.length === 1
+                      ? 'O imagine selectată'
+                      : `${selectedFiles.length} imagini selectate`}
                 </Text>
                 {selectedFiles[0]?.size && (
                   <Text style={styles.fileSize}>
@@ -798,7 +821,7 @@ export default function AdaugaScreen() {
               Adaugă Poze
             </Text>
             <Text style={[styles.sheetSubtitle, { color: textColor }]}>
-              Alege camera sau galerie
+              Alege camera sau poze din galerie
             </Text>
 
             <TouchableOpacity
