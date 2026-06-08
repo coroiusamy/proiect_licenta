@@ -60,7 +60,7 @@ export default function LoginScreen() {
         const res = await axios.post(`${API_URL}/api/auth/google`, {
           idToken: response.data.idToken,
         });
-        login(res.data.token, res.data.user?.role);
+        login(res.data.token, res.data.user?.role, res.data.isFirstLogin);
       } else {
         throw new Error('Nu s-a putut obține token-ul Google');
       }
@@ -103,7 +103,7 @@ export default function LoginScreen() {
       });
 
       const { token } = response.data;
-      login(token, response.data.user?.role);
+      login(token, response.data.user?.role, response.data.isFirstLogin);
     } catch (error) {
       let message = 'A apărut o eroare';
       if (isAxiosError(error)) {

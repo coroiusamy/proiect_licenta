@@ -17,7 +17,7 @@ type AuthContextType = {
   token: string | null;
   role: string | null;
   isLoading: boolean;
-  login: (newToken: string, userRole?: string) => void;
+  login: (newToken: string, userRole?: string, isFirstLogin?: boolean) => void;
   logout: () => void;
 };
 
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 1000);
   };
 
-  const login = (newToken: string, userRole?: string) => {
+  const login = (newToken: string, userRole?: string, isFirstLogin?: boolean) => {
     setToken(newToken);
     const resolvedRole = userRole || 'patient';
     setRole(resolvedRole);
@@ -57,6 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     SecureStore.setItemAsync('userRole', resolvedRole);
     if (resolvedRole === 'doctor') {
       router.replace('/(tabs)/pacienti');
+    } else if (isFirstLogin) {
+      router.replace('/(tabs)/profil?edit=true');
     } else {
       router.replace('/(tabs)');
     }
