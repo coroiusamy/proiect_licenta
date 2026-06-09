@@ -391,8 +391,8 @@ export default function AdaugaScreen() {
       visibilityTime: 4500,
     });
 
-    // Navigate back to history screen immediately
-    router.replace('/(tabs)/istoric');
+    // Navigate back to home screen (Acasă tab) immediately
+    router.replace('/(tabs)');
 
     // Run the upload and OCR network call in the background
     (async () => {
@@ -401,7 +401,9 @@ export default function AdaugaScreen() {
 
         for (let i = 0; i < filesToUpload.length; i++) {
           let currentFile = filesToUpload[i];
-          const isPdfFile = uploadMode === 'pdf';
+          const isPdfFile = uploadMode === 'pdf' || 
+            currentFile.name?.toLowerCase().endsWith('.pdf') || 
+            currentFile.uri?.toLowerCase().endsWith('.pdf');
 
           if (!isPdfFile) {
             currentFile = await compressImageForUpload(currentFile, i);

@@ -344,7 +344,9 @@ export const uploadAnalysisFile = async (req, res) => {
 
   try {
     const hasPdf = uploadedFiles.some(
-      (file) => file.mimetype === 'application/pdf',
+      (file) =>
+        file.mimetype === 'application/pdf' ||
+        (file.originalname && file.originalname.toLowerCase().endsWith('.pdf')),
     );
 
     if (hasPdf && uploadedFiles.length > 1) {
@@ -358,7 +360,9 @@ export const uploadAnalysisFile = async (req, res) => {
     // 1. Extragere text (PDF sau OCR multiplu)
     if (hasPdf) {
       const pdfFile = uploadedFiles.find(
-        (file) => file.mimetype === 'application/pdf',
+        (file) =>
+          file.mimetype === 'application/pdf' ||
+          (file.originalname && file.originalname.toLowerCase().endsWith('.pdf')),
       );
       console.log('[UploadAPI] process pdf', {
         name: pdfFile?.originalname,
