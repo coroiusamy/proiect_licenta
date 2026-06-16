@@ -246,7 +246,12 @@ Răspunde ACUM (3-4 propoziții, un paragraf):`;
   // Apel către modelul de limbaj
   // ============================================
   try {
-    const response = await ollama.chat({
+    // Limităm timpul de răspuns al Ollama la maximum 15 secunde (fail-safe pentru CPU lent)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('AI generation timed out')), 15000)
+    );
+
+    const chatPromise = ollama.chat({
       model: AI_MODEL,
       messages: [{ role: 'user', content: prompt }],
       options: {
@@ -256,6 +261,8 @@ Răspunde ACUM (3-4 propoziții, un paragraf):`;
         num_predict: 250,
       },
     });
+
+    const response = await Promise.race([chatPromise, timeoutPromise]);
 
     let advice = response.message.content.trim();
 

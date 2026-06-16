@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { AuthProvider } from '@/context/AuthContext';
+import { ScrapeProvider } from '@/context/ScrapeContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { toastConfig } from '../config/toastConfig';
 
@@ -21,6 +22,7 @@ export default function RootLayout() {
   return (
     <>
       <AuthProvider>
+        <ScrapeProvider>
         <ThemeProvider
           value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
         >
@@ -77,6 +79,7 @@ export default function RootLayout() {
           <Toast config={toastConfig} />
           <StatusBar style="auto" />
         </ThemeProvider>
+        </ScrapeProvider>
       </AuthProvider>
     </>
   );

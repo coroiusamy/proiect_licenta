@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -17,11 +17,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import axios from 'axios';
-import { useAuth } from '@/context/AuthContext';
 import Toast from 'react-native-toast-message';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+import { useScrape } from '@/context/ScrapeContext';
 
 const CLINIC_COLORS: Record<string, string> = {
   Synevo: '#007AFF',
@@ -32,15 +29,12 @@ const CLINIC_COLORS: Record<string, string> = {
 };
 
 export default function ComparatorScreen() {
-  const { token } = useAuth();
+  const { isScraping, results: scrapeResults, mode: scrapeMode, query: scrapeQuery, selectedAnalyses: scrapeAnalyses, startScrape, clearResults } = useScrape();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   const [query, setQuery] = useState('');
   const [selectedAnalyses, setSelectedAnalyses] = useState<string[]>([]);
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
   const [mode, setMode] = useState<'single' | 'batch'>('single');
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -57,10 +51,26 @@ export default function ComparatorScreen() {
     return () => clearTimeout(timer);
   }, []);
 
+  // When returning to comparator with existing results, restore context state
+  useEffect(() => {
+    if (scrapeResults && scrapeResults.length > 0) {
+      setMode(scrapeMode);
+      if (scrapeMode === 'single') {
+        setQuery(scrapeQuery);
+      } else {
+        setSelectedAnalyses(scrapeAnalyses);
+      }
+    }
+  }, []);
+
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
   const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
   const inputBg = isDark ? '#1C1C1E' : '#FFFFFF';
+
+  // Use context results
+  const results = scrapeResults || [];
+  const hasSearched = results.length > 0 || isScraping;
 
   // Adaugă analiză la listă
   const addAnalysis = () => {
@@ -76,7 +86,16 @@ export default function ComparatorScreen() {
     setSelectedAnalyses(selectedAnalyses.filter((a) => a !== name));
   };
 
-  const searchPrices = async () => {
+  const searchPrices = () => {
+    if (isScraping) {
+      Toast.show({
+        type: 'info',
+        text1: 'Căutare în curs ⏳',
+        text2: 'Așteaptă finalizarea căutării curente.',
+      });
+      return;
+    }
+
     // Single mode - verifică că ai query
     if (mode === 'single' && !query.trim()) {
       Toast.show({
@@ -87,18 +106,17 @@ export default function ComparatorScreen() {
       return;
     }
 
-    // Batch mode - verifică că ai cel puțin o analiză
+    // Batch mode - auto-add + validare
     let finalAnalyses = [...selectedAnalyses];
 
-    // Auto-add: Dacă ai scris ceva în input dar ai uitat să dai +, îl adăugăm noi
     if (
       mode === 'batch' &&
       query.trim() &&
       !selectedAnalyses.includes(query.trim())
     ) {
       finalAnalyses.push(query.trim());
-      setSelectedAnalyses(finalAnalyses); // Update state
-      setQuery(''); // Clear input
+      setSelectedAnalyses(finalAnalyses);
+      setQuery('');
     }
 
     if (mode === 'batch' && finalAnalyses.length === 0) {
@@ -110,56 +128,22 @@ export default function ComparatorScreen() {
       return;
     }
 
-    setLoading(true);
-    setHasSearched(true);
-    setResults([]);
-
-    // Închide tastatura automat când începe căutarea
+    // Închide tastatura
     Keyboard.dismiss();
 
-    try {
-      let response;
+    // Start background scrape via context
+    startScrape(query, mode, finalAnalyses);
 
-      // Timeout mai mare pentru scraping (60 secunde)
-      const scrapeTimeout = 60000;
+    // Toast informativ
+    Toast.show({
+      type: 'info',
+      text1: 'Căutăm cele mai bune prețuri... 🔍',
+      text2: 'Poți naviga liber în aplicație. Te anunțăm când e gata!',
+      visibilityTime: 3500,
+    });
 
-      if (mode === 'single') {
-        // Single analysis
-        response = await axios.get(`${API_URL}/api/prices`, {
-          params: { analysisName: query },
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: scrapeTimeout,
-        });
-      } else {
-        // Batch (multiple analyses)
-        response = await axios.get(`${API_URL}/api/prices`, {
-          params: { analysisNames: finalAnalyses.join(',') },
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: scrapeTimeout,
-        });
-      }
-
-      setResults(response.data.data || []);
-
-      // Success toast (optional, doar pentru feedback pozitiv)
-      if (response.data.data && response.data.data.length > 0) {
-        Toast.show({
-          type: 'success',
-          text1: mode === 'single' ? 'Oferte găsite! 🏷️' : 'Pachete comparative generate! 📊',
-          text2: mode === 'single'
-            ? `Am găsit ${response.data.data.length} prețuri diferite la clinicile partenere.`
-            : `Am structurat ${response.data.data.length} pachete comparabile de preț.`,
-        });
-      }
-    } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Conexiune eșuată ❌',
-        text2: 'Nu am putut prelua prețurile. Te rugăm să verifici conexiunea la internet.',
-      });
-    } finally {
-      setLoading(false);
-    }
+    // Navigate back immediately
+    router.back();
   };
 
   const openLink = (url: string) => {
@@ -177,13 +161,12 @@ export default function ComparatorScreen() {
     setModalVisible(true);
   };
 
-  // Reset data când switch între moduri
+  // Reset data când switch între moduri (doar dacă nu sunt rezultate active)
   React.useEffect(() => {
-    // Clear toate datele când schimbi modul
-    setQuery('');
-    setSelectedAnalyses([]);
-    setResults([]);
-    setHasSearched(false);
+    if (!scrapeResults) {
+      setQuery('');
+      setSelectedAnalyses([]);
+    }
   }, [mode]);
 
   // Render item pentru Single Mode
@@ -250,7 +233,7 @@ export default function ComparatorScreen() {
     const savings = index > 0 ? currentPrice - firstPrice : 0;
 
     // Verifică dacă pachetul e complet
-    const requestedCount = selectedAnalyses.length;
+    const requestedCount = scrapeAnalyses.length || selectedAnalyses.length;
     const foundCount = item.analysisCount || 0;
     const isComplete = foundCount === requestedCount;
 
@@ -345,7 +328,7 @@ export default function ComparatorScreen() {
       <View style={[styles.modeSelector, { backgroundColor: isDark ? '#1C1C1E' : '#E5E5EA70' }]}>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'single' && styles.modeBtnActive]}
-          onPress={() => setMode('single')}
+          onPress={() => { clearResults(); setMode('single'); }}
         >
           <Text
             style={[
@@ -358,7 +341,7 @@ export default function ComparatorScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modeBtn, mode === 'batch' && styles.modeBtnActive]}
-          onPress={() => setMode('batch')}
+          onPress={() => { clearResults(); setMode('batch'); }}
         >
           <Text
             style={[
@@ -444,7 +427,7 @@ export default function ComparatorScreen() {
       )}
 
       {/* Results Count */}
-      {results.length > 0 && !loading && (
+      {results.length > 0 && !isScraping && (
         <View style={styles.resultCount}>
           <Text style={[styles.countText, { color: textColor }]}>
             {results.length}{' '}
@@ -471,7 +454,7 @@ export default function ComparatorScreen() {
       )}
 
       {/* Content */}
-      {loading ? (
+      {isScraping ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>
@@ -481,7 +464,7 @@ export default function ComparatorScreen() {
             Verificăm Synevo, MedLife, Sante și alte clinici
           </Text>
           <Text style={styles.loadingNote}>
-            Prima căutare poate dura până la 30 sec
+            Poți naviga liber, te notificăm când e gata
           </Text>
         </View>
       ) : (
@@ -530,7 +513,6 @@ export default function ComparatorScreen() {
                         onPress={() => {
                           if (mode === 'single') {
                             setQuery(ex);
-                            setTimeout(() => searchPrices(), 100);
                           } else {
                             if (!selectedAnalyses.includes(ex)) {
                               setSelectedAnalyses([...selectedAnalyses, ex]);
@@ -549,6 +531,21 @@ export default function ComparatorScreen() {
             )
           }
         />
+      )}
+
+      {/* Clear results button when results exist */}
+      {results.length > 0 && !isScraping && (
+        <TouchableOpacity
+          style={styles.newSearchBtn}
+          onPress={() => {
+            clearResults();
+            setQuery('');
+            setSelectedAnalyses([]);
+          }}
+        >
+          <MaterialIcons name="refresh" size={20} color="#FFF" />
+          <Text style={styles.newSearchBtnText}>Căutare nouă</Text>
+        </TouchableOpacity>
       )}
 
       {/* Modal pentru detalii pachet */}
@@ -580,17 +577,17 @@ export default function ComparatorScreen() {
               </Text>
 
               {/* Status pachet */}
-              {selectedPackage && selectedAnalyses.length > 0 && (
+              {selectedPackage && (scrapeAnalyses.length > 0 || selectedAnalyses.length > 0) && (
                 <View style={styles.modalStatusBadge}>
                   <MaterialIcons
                     name={
-                      selectedPackage.analysisCount === selectedAnalyses.length
+                      selectedPackage.analysisCount === (scrapeAnalyses.length || selectedAnalyses.length)
                         ? 'check-circle'
                         : 'info'
                     }
                     size={16}
                     color={
-                      selectedPackage.analysisCount === selectedAnalyses.length
+                      selectedPackage.analysisCount === (scrapeAnalyses.length || selectedAnalyses.length)
                         ? '#34C759'
                         : '#FF9500'
                     }
@@ -601,15 +598,15 @@ export default function ComparatorScreen() {
                       {
                         color:
                           selectedPackage.analysisCount ===
-                          selectedAnalyses.length
+                          (scrapeAnalyses.length || selectedAnalyses.length)
                             ? '#34C759'
                             : '#FF9500',
                       },
                     ]}
                   >
-                    {selectedPackage.analysisCount === selectedAnalyses.length
+                    {selectedPackage.analysisCount === (scrapeAnalyses.length || selectedAnalyses.length)
                       ? 'Pachet complet'
-                      : `Pachet parțial (${selectedPackage.analysisCount}/${selectedAnalyses.length})`}
+                      : `Pachet parțial (${selectedPackage.analysisCount}/${scrapeAnalyses.length || selectedAnalyses.length})`}
                   </Text>
                 </View>
               )}
@@ -920,4 +917,21 @@ const styles = StyleSheet.create({
   modalItemName: { fontSize: 16, fontWeight: '500', marginBottom: 2 },
   modalItemOriginal: { fontSize: 12, color: '#8E8E93' },
   modalItemPrice: { fontSize: 16, fontWeight: '600' },
+  newSearchBtn: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 10,
+    gap: 8,
+  },
+  newSearchBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
+

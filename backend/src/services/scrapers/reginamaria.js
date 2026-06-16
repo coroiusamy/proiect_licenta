@@ -68,41 +68,76 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
     let detailLinks = [];
 
     try {
-      await page.waitForSelector('.view-id-search_analyses', { timeout: 5000 });
+      await page.waitForSelector('.view-id-search-analysis-dictionary', { timeout: 5000 });
 
-      detailLinks = await page.evaluate(() => {
+      detailLinks = await page.evaluate((query) => {
         const rows = Array.from(
-          document.querySelectorAll('.view-id-search_analyses .views-row'),
+          document.querySelectorAll('.view-id-search-analysis-dictionary .views-row'),
         );
-        return rows
+        
+        const normalizedQuery = query.toLowerCase().trim();
+        const queryTokens = normalizedQuery.split(/\s+/).filter(t => t.length > 2);
+
+        const items = rows
           .map((row) => {
             const link = row.querySelector('a');
-            if (link && link.href.includes('laboratoare-inteligente')) {
-              return {
-                url: link.href,
-                name: link.innerText.trim(),
-              };
+            if (link && (link.href.includes('dictionar-de-analize') || link.href.includes('laboratoare-inteligente'))) {
+              const name = link.innerText.trim();
+              const url = link.href;
+              
+              const normalizedName = name.toLowerCase();
+              let score = 0;
+              
+              // Direct match
+              if (normalizedName === normalizedQuery) score += 100;
+              // Contains full query
+              if (normalizedName.includes(normalizedQuery)) score += 50;
+              // Token matches
+              for (const token of queryTokens) {
+                if (normalizedName.includes(token)) {
+                  score += 15;
+                }
+              }
+              // Synonyms/Equivalents: Glicemie <-> Glucoza
+              if (normalizedQuery.includes('glicem') && normalizedName.includes('glucoz')) {
+                score += 30;
+              }
+              if (normalizedQuery.includes('glucoz') && normalizedName.includes('glicem')) {
+                score += 30;
+              }
+
+              return { url, name, score };
             }
             return null;
           })
-          .filter(Boolean)
-          .slice(0, 3);
-      });
+          .filter(Boolean);
+
+        // Sort descending by score
+        items.sort((a, b) => b.score - a.score);
+
+        // Map back to expected structure and take top 4
+        return items.slice(0, 4).map(item => ({ url: item.url, name: item.name }));
+      }, analysisName);
     } catch (e) {
-      // Plan B: Caută direct toate link-urile
+      // Plan B: Caută direct toate link-urile din pagină, dar filtrează link-urile generice
       detailLinks = await page.evaluate(() => {
         const links = Array.from(document.querySelectorAll('a'));
         const found = [];
         const seen = new Set();
 
         for (const link of links) {
-          if (
-            link.href &&
-            link.href.includes('laboratoare-inteligente') &&
-            !seen.has(link.href)
-          ) {
+          if (!link.href) continue;
+          
+          const isAnalysisUrl = link.href.includes('dictionar-de-analize') || 
+                               (link.href.includes('gama-de-analize') && link.href.includes('investigation=') && !link.href.includes('investigation=All'));
+
+          if (isAnalysisUrl && !seen.has(link.href)) {
             const text = link.innerText.trim();
-            if (text.length > 3 && !text.toLowerCase().includes('vezi')) {
+            const isGenericText = text.toLowerCase().includes('calculator') || 
+                                  text.toLowerCase().includes('teste genetica') || 
+                                  text.toLowerCase().includes('vezi toate');
+            
+            if (text.length > 3 && !isGenericText) {
               found.push({ url: link.href, name: text });
               seen.add(link.href);
             }
@@ -138,13 +173,14 @@ export const scrapeReginaMaria = async (browser, analysisName) => {
         } catch (e) {}
 
         // Extrage preț
-        await page.waitForSelector('.views-field-field-price .field-content', {
+        // Extrage preț (suportă atât clasa .price cât și vechiul selector views-field)
+        await page.waitForSelector('.price, .views-field-field-price .field-content', {
           timeout: 5000,
         });
 
         const price = await page.evaluate(() => {
           const priceEl = document.querySelector(
-            '.views-field-field-price .field-content',
+            '.price, .views-field-field-price .field-content',
           );
           if (priceEl) {
             const match = priceEl.innerText.match(/(\d+[.,]?\d*)/);

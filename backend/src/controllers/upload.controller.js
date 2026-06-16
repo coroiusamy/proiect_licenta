@@ -330,6 +330,12 @@ export const uploadAnalysisFile = async (req, res) => {
     totalFiles: uploadedFiles.length,
   });
 
+  console.log('[UploadAPI] files details', uploadedFiles.map((f) => ({
+    name: f.originalname,
+    mime: f.mimetype,
+    size: f.size,
+  })));
+
   if (uploadedFiles.length === 0) {
     return res
       .status(400)
@@ -607,29 +613,28 @@ export const uploadAnalysisFile = async (req, res) => {
         for (let i = 0; i < backgroundJobs.length; i += batchSize) {
           const batch = backgroundJobs.slice(i, i + batchSize);
 
-          await Promise.all(
-            batch.map(async (job) => {
-              try {
-                const advice = await generateWellnessAdvice(
-                  job.name,
-                  job.value,
-                  job.unit || '',
-                  job.status,
-                  job.refMin,
-                  job.refMax,
-                );
+          // Rulăm joburile din batch secvențial pentru a evita supraîncărcarea Ollama pe CPU
+          for (const job of batch) {
+            try {
+              const advice = await generateWellnessAdvice(
+                job.name,
+                job.value,
+                job.unit || '',
+                job.status,
+                job.refMin,
+                job.refMax,
+              );
 
-                if (advice) {
-                  await prisma.analysisResult.update({
-                    where: { id: job.id },
-                    data: { aiAdvice: advice },
-                  });
-                }
-              } catch (err) {
-                // Eroarea AI nu afectează rezultatul salvat
+              if (advice) {
+                await prisma.analysisResult.update({
+                  where: { id: job.id },
+                  data: { aiAdvice: advice },
+                });
               }
-            }),
-          );
+            } catch (err) {
+              // Eroarea AI nu afectează rezultatul salvat
+            }
+          }
         }
       }, 1000);
     }
