@@ -91,6 +91,7 @@ export const login = async (req, res) => {
       message: 'Logat!',
       token,
       user: { email: user.email, firstName: user.firstName, role: user.role },
+      isFirstLogin: user.role === 'patient' && !user.height && !user.weight,
     });
   } catch (error) {
     res.status(500).json({ message: 'Eroare server.' });
@@ -201,6 +202,7 @@ export const googleAuth = async (req, res) => {
       googleUserInfo;
 
     let user = await prisma.user.findUnique({ where: { googleId } });
+    let isFirstLogin = false;
 
     if (!user) {
       user = await prisma.user.findUnique({ where: { email } });
@@ -217,6 +219,7 @@ export const googleAuth = async (req, res) => {
           data: { googleId, profilePicture },
         });
       } else {
+        isFirstLogin = true;
         user = await prisma.user.create({
           data: {
             email,
@@ -248,6 +251,7 @@ export const googleAuth = async (req, res) => {
       message: 'Autentificare reușită!',
       token,
       user: { email: user.email, firstName: user.firstName, role: user.role },
+      isFirstLogin: isFirstLogin || (user.role === 'patient' && !user.height && !user.weight),
     });
   } catch (error) {
     res.status(500).json({ message: 'Eroare server.' });

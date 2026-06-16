@@ -21,8 +21,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import { useAuth } from '@/context/AuthContext';
+import { useScrape } from '@/context/ScrapeContext';
 
-// Suprimăm eroarea depreciată specifică pentru a nu bloca rularea
 import { LogBox } from 'react-native';
 LogBox.ignoreLogs([
   'Method downloadAsync imported from "expo-file-system" is deprecated',
@@ -44,8 +44,8 @@ const RecentAnalysisItem = ({ item, isDark, onPress }: any) => {
   return (
     <TouchableOpacity
       style={[
-        styles.recentItem, 
-        { 
+        styles.recentItem,
+        {
           backgroundColor: itemBg,
           borderLeftWidth: 4,
           borderLeftColor: statusColor,
@@ -169,6 +169,7 @@ const QuickActionButton = ({ icon, label, onPress, color, isDark }: any) => {
 
 export default function HomeScreen() {
   const { token } = useAuth();
+  const { isScraping, results: scrapeResults, query: scrapeQuery, mode: scrapeMode, selectedAnalyses: scrapeAnalyses } = useScrape();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -375,6 +376,66 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
+        {/* Banner Scraping */}
+        {(isScraping || (scrapeResults && scrapeResults.length > 0)) && (
+          <TouchableOpacity
+            style={[
+              styles.scrapeBanner,
+              {
+                backgroundColor: isScraping
+                  ? (isDark ? '#1C1C1E' : '#E5F1FF')
+                  : (isDark ? '#1C1C1E' : '#E8F5E9'),
+                borderColor: isScraping
+                  ? '#007AFF'
+                  : '#34C759',
+              },
+            ]}
+            onPress={() => router.push('/comparator')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.scrapeBannerContent}>
+              <View
+                style={[
+                  styles.scrapeBannerIconContainer,
+                  {
+                    backgroundColor: isScraping
+                      ? 'rgba(0, 122, 255, 0.1)'
+                      : 'rgba(52, 199, 89, 0.1)',
+                  },
+                ]}
+              >
+                {isScraping ? (
+                  <ActivityIndicator size="small" color="#007AFF" />
+                ) : (
+                  <MaterialIcons name="local-offer" size={20} color="#34C759" />
+                )}
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text
+                  style={[
+                    styles.scrapeBannerTitle,
+                    { color: isDark ? '#FFFFFF' : '#000000' },
+                  ]}
+                >
+                  {isScraping
+                    ? 'Căutăm cele mai bune prețuri...'
+                    : 'Prețuri disponibile!'}
+                </Text>
+                <Text style={styles.scrapeBannerSubtitle}>
+                  {isScraping
+                    ? `Verificăm clinicile pentru: "${scrapeMode === 'single' ? scrapeQuery : (scrapeAnalyses || []).join(', ')}"`
+                    : `Am găsit ${scrapeResults?.length} oferte. Apasă pentru a le vizualiza.`}
+                </Text>
+              </View>
+              <MaterialIcons
+                name="chevron-right"
+                size={22}
+                color={isScraping ? '#007AFF' : '#34C759'}
+              />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* ... HealthCards & QuickActions... */}
         <View style={styles.section}>
           <Text
@@ -488,7 +549,7 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.healthSummaryBox,
-                { 
+                {
                   backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
                   borderColor: healthSummary.score >= 80 ? '#34C75935' : healthSummary.score >= 50 ? '#FF950035' : '#FF3B3035',
                   borderWidth: 1.5,
@@ -497,7 +558,7 @@ export default function HomeScreen() {
               ]}
             >
               <View style={styles.healthScoreRow}>
-                <View 
+                <View
                   style={[
                     styles.healthScoreCircle,
                     {
@@ -811,5 +872,37 @@ const styles = StyleSheet.create({
   healthSummaryText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  scrapeBanner: {
+    marginHorizontal: 20,
+    marginTop: 15,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  scrapeBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scrapeBannerIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrapeBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  scrapeBannerSubtitle: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 2,
   },
 });

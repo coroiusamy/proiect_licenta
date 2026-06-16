@@ -18,10 +18,12 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function RegisterScreen() {
+  const { login } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -67,7 +69,7 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
     try {
-      await axios.post(`${API_URL}/api/auth/register`, {
+      const response = await axios.post(`${API_URL}/api/auth/register`, {
         email,
         password,
         firstName,
@@ -76,14 +78,16 @@ export default function RegisterScreen() {
         ...(role === 'doctor' && { specialty: specialty.trim() }),
       });
 
+      const { token, user } = response.data;
+
       Toast.show({
         type: 'success',
         text1: 'Succes',
-        text2: 'Cont creat! Te rugăm să te loghezi.',
+        text2: 'Cont creat cu succes!',
       });
 
-      // Redirect către login
-      router.replace('/login');
+      // Loghează automat și redirecționează (cu isFirstLogin = true)
+      login(token, user?.role, true);
     } catch (error) {
       let message = 'A apărut o eroare';
       if (isAxiosError(error)) {
@@ -111,8 +115,9 @@ export default function RegisterScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: containerBg }]} edges={['top', 'bottom']}>
       <ThemedView style={[styles.container, { backgroundColor: containerBg }]}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
           style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 100}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -265,7 +270,7 @@ export default function RegisterScreen() {
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <ThemedText style={styles.buttonText}>
-                  ÎNREGISTREAZĂ-TE
+                  CREEAZĂ CONT
                 </ThemedText>
               )}
             </TouchableOpacity>

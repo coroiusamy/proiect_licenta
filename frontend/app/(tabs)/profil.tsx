@@ -16,10 +16,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { useAuth } from '@/context/AuthContext';
 
@@ -30,10 +31,13 @@ export default function ProfilScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  const { edit } = useLocalSearchParams();
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [userData, setUserData] = useState({
     email: '',
@@ -48,6 +52,18 @@ export default function ProfilScreen() {
   });
 
   const [editData, setEditData] = useState({ ...userData });
+
+  useEffect(() => {
+    if (edit === 'true') {
+      setIsEditing(true);
+      Toast.show({
+        type: 'info',
+        text1: 'Bun venit!',
+        text2: 'Te rugăm să adaugi datele biometrice.',
+        position: 'bottom',
+      });
+    }
+  }, [edit]);
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';
@@ -68,9 +84,7 @@ export default function ProfilScreen() {
         email: response.data.email || '',
         firstName: response.data.firstName || '',
         lastName: response.data.lastName || '',
-        dateOfBirth: response.data.dateOfBirth
-          ? new Date(response.data.dateOfBirth).toLocaleDateString('ro-RO')
-          : '',
+        dateOfBirth: response.data.dateOfBirth || '',
         gender: response.data.gender || '',
         height: response.data.height?.toString() || '',
         weight: response.data.weight?.toString() || '',
@@ -101,6 +115,7 @@ export default function ProfilScreen() {
         gender: editData.gender,
         height: editData.height ? parseFloat(editData.height) : null,
         weight: editData.weight ? parseFloat(editData.weight) : null,
+        dateOfBirth: editData.dateOfBirth || null,
       };
 
       await axios.put(`${API_URL}/api/user/profile`, payload, {
@@ -315,6 +330,47 @@ export default function ProfilScreen() {
       },
     ]);
   };
+
+  const calculateAge = (dateOfBirthString: string) => {
+    if (!dateOfBirthString) return null;
+    const birthDate = new Date(dateOfBirthString);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return 'Nespecificat';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return 'Nespecificat';
+      return d.toLocaleDateString('ro-RO');
+    } catch {
+      return 'Nespecificat';
+    }
+  };
+
+  const formatDateLongDisplay = (dateStr: string) => {
+    if (!dateStr) return 'Selectează data';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return 'Selectează data';
+      return d.toLocaleDateString('ro-RO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return 'Selectează data';
+    }
+  };
+
+  const age = calculateAge(isEditing ? editData.dateOfBirth : userData.dateOfBirth);
 
   const calculateBMI = () => {
     const sourceData = isEditing ? editData : userData;
@@ -581,7 +637,54 @@ export default function ProfilScreen() {
                 </Text>
               </View>
 
-              {userData.dateOfBirth && (
+              <View
+                style={[
+                  styles.infoDivider,
+                  { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' },
+                ]}
+              />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Data nașterii</Text>
+                {isEditing ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.datePickerButton,
+                        { backgroundColor: inputBg },
+                      ]}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Text style={[styles.datePickerText, { color: editData.dateOfBirth ? textColor : placeholderColor }]}>
+                        {formatDateLongDisplay(editData.dateOfBirth)}
+                      </Text>
+                      <MaterialIcons name="calendar-today" size={16} color="#8E8E93" style={{ marginLeft: 6 }} />
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={editData.dateOfBirth ? new Date(editData.dateOfBirth) : new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                          setShowDatePicker(Platform.OS === 'ios');
+                          if (selectedDate) {
+                            setEditData({
+                              ...editData,
+                              dateOfBirth: selectedDate.toISOString(),
+                            });
+                          }
+                        }}
+                        maximumDate={new Date()}
+                      />
+                    )}
+                  </View>
+                ) : (
+                  <Text style={[styles.infoValue, { color: textColor }]}>
+                    {formatDateDisplay(userData.dateOfBirth)}
+                  </Text>
+                )}
+              </View>
+
+              {age !== null && (
                 <>
                   <View
                     style={[
@@ -590,9 +693,9 @@ export default function ProfilScreen() {
                     ]}
                   />
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Data nașterii</Text>
+                    <Text style={styles.infoLabel}>Vârstă</Text>
                     <Text style={[styles.infoValue, { color: textColor }]}>
-                      {userData.dateOfBirth}
+                      {age} ani
                     </Text>
                   </View>
                 </>
@@ -1027,6 +1130,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     minWidth: 120,
+    textAlign: 'right',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 120,
+    justifyContent: 'flex-end',
+  },
+  datePickerText: {
+    fontSize: 15,
+    fontWeight: '500',
     textAlign: 'right',
   },
   infoDivider: { height: 1, marginHorizontal: 16 },

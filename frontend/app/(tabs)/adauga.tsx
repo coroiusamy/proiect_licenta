@@ -17,6 +17,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 
@@ -32,12 +33,21 @@ const logUpload = (...args: any[]) => {
   console.log('[UploadFlow]', ...args);
 };
 
+// Global upload state to prevent concurrent uploads and sync across mounts
+let isGlobalUploading = false;
+const globalUploadListeners = new Set<(loading: boolean) => void>();
+
+const setGlobalUploading = (loading: boolean) => {
+  isGlobalUploading = loading;
+  globalUploadListeners.forEach((listener) => listener(loading));
+};
+
 export default function AdaugaScreen() {
   const { token } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(isGlobalUploading);
   const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
   const [isSourceSheetVisible, setIsSourceSheetVisible] = useState(false);
@@ -49,6 +59,17 @@ export default function AdaugaScreen() {
       setIsMounting(false);
     }, 100);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const listener = (loading: boolean) => {
+      setIsUploading(loading);
+    };
+    globalUploadListeners.add(listener);
+    setIsUploading(isGlobalUploading);
+    return () => {
+      globalUploadListeners.delete(listener);
+    };
   }, []);
 
   const pickerBusyRef = useRef(false);
@@ -75,20 +96,25 @@ export default function AdaugaScreen() {
 
       try {
         const pendingResult = await ImagePicker.getPendingResultAsync();
+        if (!pendingResult) return;
+        const result = Array.isArray(pendingResult) ? pendingResult[0] : pendingResult;
         if (
-          !pendingResult ||
-          pendingResult.canceled ||
-          !pendingResult.assets?.length
+          !result ||
+          'error' in result ||
+          result.canceled ||
+          !('assets' in result) ||
+          !result.assets ||
+          result.assets.length === 0
         ) {
           return;
         }
 
         logUpload('pickImage:pending_result_recovered', {
-          assetsCount: pendingResult.assets.length,
+          assetsCount: result.assets.length,
         });
 
-        const validAssets = pendingResult.assets.filter(
-          (asset) => (asset.fileSize || 0) <= RAW_IMAGE_ACCEPT_MAX_BYTES,
+        const validAssets = result.assets.filter(
+          (asset: any) => (asset.fileSize || 0) <= RAW_IMAGE_ACCEPT_MAX_BYTES,
         );
 
         if (validAssets.length === 0) return;
@@ -175,6 +201,7 @@ export default function AdaugaScreen() {
   };
 
   const pickPDF = async () => {
+    if (isGlobalUploading) return;
     try {
       logUpload('pickPDF:start');
       const result = await DocumentPicker.getDocumentAsync({
@@ -208,6 +235,7 @@ export default function AdaugaScreen() {
   };
 
   const pickImage = async () => {
+    if (isGlobalUploading) return;
     if (!acquirePickerLock()) return;
     try {
       logUpload('pickImage:start_camera');
@@ -237,7 +265,6 @@ export default function AdaugaScreen() {
         logUpload('pickImage:selected', {
           uri: image?.uri,
           fileSize: image?.fileSize,
-          size: image?.size,
           mimeType: image?.mimeType,
         });
 
@@ -272,6 +299,7 @@ export default function AdaugaScreen() {
   };
 
   const pickImagesFromGallery = async () => {
+    if (isGlobalUploading) return;
     if (!acquirePickerLock()) return;
     try {
       logUpload('pickImagesFromGallery:start');
@@ -360,6 +388,15 @@ export default function AdaugaScreen() {
   };
 
   const uploadFile = async () => {
+    if (isGlobalUploading) {
+      Toast.show({
+        type: 'info',
+        text1: 'Procesare în curs ⏳',
+        text2: 'Te rugăm să aștepți finalizarea încărcării curente.',
+      });
+      return;
+    }
+
     logUpload('uploadFile:start', {
       fileType,
       filesCount: selectedFiles.length,
@@ -391,21 +428,111 @@ export default function AdaugaScreen() {
       visibilityTime: 4500,
     });
 
-    // Navigate back to history screen immediately
-    router.replace('/(tabs)/istoric');
+    setGlobalUploading(true);
 
-    // Run the upload and OCR network call in the background
+    // CRITICAL: Copy files to a persistent cache directory BEFORE navigating.
+    // On Android, DocumentPicker cache URIs become inaccessible after the
+    // component that picked them unmounts (via router.replace). By copying
+    // first, we guarantee the upload IIFE always has valid file paths.
+    const persistentFiles: typeof filesToUpload = [];
+    try {
+      const uploadCacheDir = `${FileSystem.cacheDirectory}upload_staging/`;
+      // Ensure the staging directory exists
+      const dirInfo = await FileSystem.getInfoAsync(uploadCacheDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(uploadCacheDir, { intermediates: true });
+      }
+
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const currentFile = filesToUpload[i];
+        const isPdfFile = uploadMode === 'pdf' || 
+          currentFile.name?.toLowerCase().endsWith('.pdf') || 
+          currentFile.uri?.toLowerCase().endsWith('.pdf');
+
+        // Wait for the file to be fully written
+        let fileReady = false;
+        let retries = 5;
+        while (retries > 0) {
+          try {
+            const fileInfo = await FileSystem.getInfoAsync(currentFile.uri);
+            if (fileInfo.exists && fileInfo.size > 0) {
+              fileReady = true;
+              break;
+            }
+          } catch (err) {
+            logUpload('uploadFile:check_file_error', err);
+          }
+          logUpload(`uploadFile:file not ready, waiting... (${retries} left)`);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          retries--;
+        }
+
+        if (!fileReady) {
+          throw new Error('Fișierul nu a putut fi citit de pe dispozitiv. Te rugăm să încerci din nou.');
+        }
+
+        // Compress image if needed (before copying)
+        let processedFile = currentFile;
+        if (!isPdfFile) {
+          processedFile = await compressImageForUpload(currentFile, i);
+        }
+
+        if (!isPdfFile && getAssetSize(processedFile) > RAW_IMAGE_ACCEPT_MAX_BYTES) {
+          Toast.show({
+            type: 'error',
+            text1: 'Fișier prea mare',
+            text2: 'Una dintre imagini depășește limita de mărime admisă.',
+          });
+          setGlobalUploading(false);
+          return;
+        }
+
+        // Copy to persistent cache so the URI survives navigation
+        const ext = isPdfFile ? '.pdf' : '.jpg';
+        const safeName = `upload_${Date.now()}_${i}${ext}`;
+        const persistentUri = `${uploadCacheDir}${safeName}`;
+        await FileSystem.copyAsync({ from: processedFile.uri, to: persistentUri });
+
+        logUpload('uploadFile:file_staged', {
+          index: i,
+          originalUri: processedFile.uri,
+          persistentUri,
+          name: processedFile.name,
+          size: getAssetSize(processedFile),
+        });
+
+        persistentFiles.push({
+          ...processedFile,
+          uri: persistentUri,
+          _isPdf: isPdfFile,
+        } as any);
+      }
+    } catch (stagingError: any) {
+      logUpload('uploadFile:staging_error', {
+        message: stagingError?.message,
+      });
+      Toast.show({
+        type: 'error',
+        text1: 'Eroare la pregătirea fișierelor ❌',
+        text2: stagingError.message || 'Nu am putut pregăti fișierele pentru încărcare.',
+        visibilityTime: 5000,
+      });
+      setGlobalUploading(false);
+      return;
+    }
+
+    // NOW it is safe to navigate – files are persisted in our own cache
+    // Use '/' which goes through app/index.tsx → Redirect to /(tabs) → Acasă tab
+    router.replace('/');
+
+    // Run the upload network call in the background with persistent file URIs
     (async () => {
       try {
         const formData = new FormData();
 
-        for (let i = 0; i < filesToUpload.length; i++) {
-          let currentFile = filesToUpload[i];
-          const isPdfFile = uploadMode === 'pdf';
-
-          if (!isPdfFile) {
-            currentFile = await compressImageForUpload(currentFile, i);
-          }
+        for (let i = 0; i < persistentFiles.length; i++) {
+          const currentFile = persistentFiles[i] as any;
+          const isPdfFile = !!currentFile._isPdf;
 
           logUpload('uploadFile:prepare_file (bg)', {
             index: i,
@@ -415,19 +542,17 @@ export default function AdaugaScreen() {
             size: getAssetSize(currentFile),
           });
 
-          if (!isPdfFile && getAssetSize(currentFile) > RAW_IMAGE_ACCEPT_MAX_BYTES) {
-            Toast.show({
-              type: 'error',
-              text1: 'Fișier prea mare',
-              text2: 'Una dintre imagini depășește limita de mărime admisă.',
-            });
-            return;
+          let resolvedName = currentFile.name || `analysis_${Date.now()}_${i}`;
+          if (isPdfFile && !resolvedName.toLowerCase().endsWith('.pdf')) {
+            resolvedName += '.pdf';
+          } else if (!isPdfFile && !resolvedName.toLowerCase().endsWith('.jpg') && !resolvedName.toLowerCase().endsWith('.jpeg')) {
+            resolvedName += '.jpg';
           }
 
           const fileToUpload: any = {
             uri: currentFile.uri,
-            type: currentFile.mimeType || (isPdfFile ? 'application/pdf' : 'image/jpeg'),
-            name: currentFile.name || `analysis_${Date.now()}_${i}.${isPdfFile ? 'pdf' : 'jpg'}`,
+            type: isPdfFile ? 'application/pdf' : (currentFile.mimeType || 'image/jpeg'),
+            name: resolvedName,
           };
 
           formData.append(
@@ -439,32 +564,49 @@ export default function AdaugaScreen() {
         logUpload('uploadFile:request_send (bg)', {
           endpoint: `${API_URL}/api/analyses/upload`,
           mode: uploadMode,
-          filesCount: filesToUpload.length,
+          filesCount: persistentFiles.length,
         });
 
-        const response = await axios.post(
-          `${API_URL}/api/analyses/upload`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data',
-            },
-            timeout: 90000, // Safe 90 seconds timeout for background processing
-          },
-        );
+        let response = null;
+        let uploadRetries = 3;
+        while (uploadRetries > 0) {
+          try {
+            response = await axios.post(
+              `${API_URL}/api/analyses/upload`,
+              formData,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'multipart/form-data',
+                },
+                timeout: 90000, // Safe 90 seconds timeout for background processing
+              },
+            );
+            break; // Succeeded!
+          } catch (postError: any) {
+            uploadRetries--;
+            logUpload(`uploadFile:post failed, retries left: ${uploadRetries}`, postError?.message);
+            if (uploadRetries === 0) {
+              throw postError; // Throw final error if all retries exhausted
+            }
+            // Wait 1.5 seconds before retrying
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
+        }
 
         logUpload('uploadFile:response_ok (bg)', response?.data);
 
         // Global success toast
-        const valText = response.data.count === 1
+        const count = response?.data?.count || 0;
+        const clinic = response?.data?.clinic || 'Clinică';
+        const valText = count === 1
           ? 'o valoare nouă'
-          : `${response.data.count} valori noi`;
+          : `${count} valori noi`;
 
         Toast.show({
           type: 'success',
           text1: 'Analize salvate cu succes! 🎉',
-          text2: `Am adăugat ${valText} în istoricul tău medical (${response.data.clinic}).`,
+          text2: `Am adăugat ${valText} în istoricul tău medical (${clinic}).`,
           visibilityTime: 6000,
         });
       } catch (error: any) {
@@ -477,9 +619,17 @@ export default function AdaugaScreen() {
         Toast.show({
           type: 'error',
           text1: 'Hopa! Am întâmpinat o problemă ❌',
-          text2: error.response?.data?.message || 'Nu am putut citi datele. Te rugăm să încerci din nou cu imagini mai clare.',
+          text2: error.response?.data?.message || error.message || 'Nu am putut citi datele. Te rugăm să încerci din nou cu imagini mai clare.',
           visibilityTime: 6500,
         });
+      } finally {
+        setGlobalUploading(false);
+        // Clean up staged files
+        try {
+          for (const f of persistentFiles) {
+            await FileSystem.deleteAsync(f.uri, { idempotent: true });
+          }
+        } catch (_) { /* ignore cleanup errors */ }
       }
     })();
   };
@@ -582,6 +732,15 @@ export default function AdaugaScreen() {
                 <MaterialIcons name="close" size={24} color="#FF3B30" />
               </TouchableOpacity>
             </View>
+          ) : isUploading ? (
+            <>
+              <Text style={[styles.uploadTitle, { color: textColor }]}>
+                Procesare în curs... ⏳
+              </Text>
+              <Text style={[styles.uploadText, { color: textColor }]}>
+                Analizele tale se procesează în fundal. Te rugăm să aștepți finalizarea pentru a încărca alte documente.
+              </Text>
+            </>
           ) : (
             <>
               <Text style={[styles.uploadTitle, { color: textColor }]}>
@@ -597,8 +756,12 @@ export default function AdaugaScreen() {
           {selectedFiles.length === 0 ? (
             <View style={styles.buttonGroup}>
               <TouchableOpacity
-                style={[styles.selectButton, { backgroundColor: '#007AFF' }]}
+                style={[
+                  styles.selectButton,
+                  { backgroundColor: isUploading ? '#8E8E93' : '#007AFF' }
+                ]}
                 onPress={pickPDF}
+                disabled={isUploading}
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="folder-open" size={24} color="#FFFFFF" />
@@ -606,8 +769,12 @@ export default function AdaugaScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.selectButton, { backgroundColor: '#5856D6' }]}
+                style={[
+                  styles.selectButton,
+                  { backgroundColor: isUploading ? '#8E8E93' : '#5856D6' }
+                ]}
                 onPress={pickImages}
+                disabled={isUploading}
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="photo-library" size={24} color="#FFFFFF" />

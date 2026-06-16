@@ -117,8 +117,9 @@ export const scrapePricesBatch = async (analysisNames) => {
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
 
-      // Colectăm TOATE analizele lipsă SIMULTAN
-      const scrapePromises = missing.map(async (analysisName) => {
+      // Colectăm analizele lipsă secvențial (pentru a limita paginile deschise simultan la maximum 5)
+      const scraped = [];
+      for (const analysisName of missing) {
         try {
           const [synevo, bioclinica, sante, regina, medlife] =
             await Promise.all([
@@ -143,13 +144,11 @@ export const scrapePricesBatch = async (analysisNames) => {
             await savePricesToCache(filtered, analysisName);
           }
 
-          return { analysisName, results: filtered };
+          scraped.push({ analysisName, results: filtered });
         } catch (err) {
-          return { analysisName, results: [] };
+          scraped.push({ analysisName, results: [] });
         }
-      });
-
-      const scraped = await Promise.all(scrapePromises);
+      }
 
       scraped.forEach(({ analysisName, results }) => {
         freshResults[analysisName] = results;
