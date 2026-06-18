@@ -168,8 +168,8 @@ const QuickActionButton = ({ icon, label, onPress, color, isDark }: any) => {
 };
 
 export default function HomeScreen() {
-  const { token } = useAuth();
-  const { isScraping, results: scrapeResults, query: scrapeQuery, mode: scrapeMode, selectedAnalyses: scrapeAnalyses } = useScrape();
+  const { token, role } = useAuth();
+  const { isScraping, results: scrapeResults, query: scrapeQuery, mode: scrapeMode, selectedAnalyses: scrapeAnalyses, resultsViewed } = useScrape();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -230,7 +230,6 @@ export default function HomeScreen() {
         lastUpdate: analyses.length > 0 ? new Date(analyses[0].date) : null,
       });
     } catch (error) {
-      // Eroare silențioasă - nu afișăm toast la încărcarea dashboard-ului
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -239,8 +238,10 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchDashboardData();
-    }, [fetchDashboardData]),
+      if (role === 'patient') {
+        fetchDashboardData();
+      }
+    }, [fetchDashboardData, role]),
   );
 
   const onRefresh = () => {
@@ -322,6 +323,10 @@ export default function HomeScreen() {
     );
   }
 
+  if (role === 'doctor') {
+    return null;
+  }
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: containerBg }]}
@@ -377,7 +382,7 @@ export default function HomeScreen() {
         </LinearGradient>
 
         {/* Banner Scraping */}
-        {(isScraping || (scrapeResults && scrapeResults.length > 0)) && (
+        {(isScraping || (scrapeResults && scrapeResults.length > 0 && !resultsViewed)) && (
           <TouchableOpacity
             style={[
               styles.scrapeBanner,
