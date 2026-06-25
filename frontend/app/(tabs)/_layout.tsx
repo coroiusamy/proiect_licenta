@@ -14,8 +14,6 @@ export default function TabLayout() {
   const backgroundColor = isDark ? '#1C1C1E' : '#FFFFFF';
   const borderColor = isDark ? '#2C2C2E' : '#E5E5EA';
 
-  const isDoctor = role === 'doctor';
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -27,6 +25,16 @@ export default function TabLayout() {
   if (!token) {
     return <Redirect href="/login" />;
   }
+
+  if (!role) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={activeTintColor} />
+      </View>
+    );
+  }
+
+  const isDoctor = role === 'doctor';
 
   return (
     <Tabs

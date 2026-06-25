@@ -13,11 +13,13 @@ interface ScrapeState {
   query: string;
   selectedAnalyses: string[];
   error: string | null;
+  resultsViewed: boolean;
 }
 
 interface ScrapeContextType extends ScrapeState {
   startScrape: (query: string, mode: 'single' | 'batch', analyses: string[]) => void;
   clearResults: () => void;
+  markResultsAsViewed: () => void;
 }
 
 const ScrapeContext = createContext<ScrapeContextType>({
@@ -27,8 +29,10 @@ const ScrapeContext = createContext<ScrapeContextType>({
   query: '',
   selectedAnalyses: [],
   error: null,
+  resultsViewed: false,
   startScrape: () => {},
   clearResults: () => {},
+  markResultsAsViewed: () => {},
 });
 
 export const useScrape = () => useContext(ScrapeContext);
@@ -42,6 +46,7 @@ export function ScrapeProvider({ children }: { children: React.ReactNode }) {
     query: '',
     selectedAnalyses: [],
     error: null,
+    resultsViewed: false,
   });
 
   // Prevent duplicate scrapes
@@ -52,6 +57,14 @@ export function ScrapeProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       results: null,
       error: null,
+      resultsViewed: false,
+    }));
+  }, []);
+
+  const markResultsAsViewed = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      resultsViewed: true,
     }));
   }, []);
 
@@ -68,6 +81,7 @@ export function ScrapeProvider({ children }: { children: React.ReactNode }) {
         query,
         mode,
         selectedAnalyses: analyses,
+        resultsViewed: false,
       }));
 
       // Fire-and-forget background scrape
@@ -144,7 +158,7 @@ export function ScrapeProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ScrapeContext.Provider value={{ ...state, startScrape, clearResults }}>
+    <ScrapeContext.Provider value={{ ...state, startScrape, clearResults, markResultsAsViewed }}>
       {children}
     </ScrapeContext.Provider>
   );

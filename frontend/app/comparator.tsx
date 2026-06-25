@@ -29,7 +29,7 @@ const CLINIC_COLORS: Record<string, string> = {
 };
 
 export default function ComparatorScreen() {
-  const { isScraping, results: scrapeResults, mode: scrapeMode, query: scrapeQuery, selectedAnalyses: scrapeAnalyses, startScrape, clearResults } = useScrape();
+  const { isScraping, results: scrapeResults, mode: scrapeMode, query: scrapeQuery, selectedAnalyses: scrapeAnalyses, startScrape, clearResults, markResultsAsViewed } = useScrape();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -62,6 +62,13 @@ export default function ComparatorScreen() {
       }
     }
   }, []);
+
+  // Mark results as viewed when they are loaded or displayed
+  useEffect(() => {
+    if (scrapeResults && scrapeResults.length > 0) {
+      markResultsAsViewed();
+    }
+  }, [scrapeResults, markResultsAsViewed]);
 
   const containerBg = isDark ? '#000000' : '#F8F9FA';
   const textColor = isDark ? '#FFFFFF' : '#000000';

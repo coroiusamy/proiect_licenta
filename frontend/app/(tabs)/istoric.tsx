@@ -142,7 +142,7 @@ const EmptyState = ({ isDark }: any) => {
 };
 
 export default function IstoricScreen() {
-  const { token } = useAuth();
+  const { token, role } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [isLoading, setIsLoading] = useState(true);
@@ -222,8 +222,10 @@ export default function IstoricScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchAnalyses();
-    }, [fetchAnalyses]),
+      if (role === 'patient') {
+        fetchAnalyses();
+      }
+    }, [fetchAnalyses, role]),
   );
 
   const onRefresh = useCallback(() => {
@@ -265,6 +267,10 @@ export default function IstoricScreen() {
         <ActivityIndicator size="large" color="#007AFF" />
       </View>
     );
+
+  if (role === 'doctor') {
+    return null;
+  }
 
   return (
     <SafeAreaView
